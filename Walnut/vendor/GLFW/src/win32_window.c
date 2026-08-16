@@ -34,6 +34,8 @@
 #include <string.h>
 #include <windowsx.h>
 #include <shellapi.h>
+
+HRESULT WINAPI DwmExtendFrameIntoClientArea(HWND hWnd, const void *pMarInset);
 #include <uxtheme.h>
 
 // Returns the window style for the specified window
@@ -552,7 +554,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
                 SetRectEmpty(&border_thickness);
                 if (GetWindowLongPtr(hWnd, GWL_STYLE) & WS_THICKFRAME)
                 {
-                    AdjustWindowRectEx(&border_thickness, GetWindowLongPtr(hWnd, GWL_STYLE) & ~WS_CAPTION, FALSE, NULL);
+                    AdjustWindowRectEx(&border_thickness, GetWindowLongPtr(hWnd, GWL_STYLE) & ~WS_CAPTION, FALSE, 0);
                     border_thickness.left *= -1;
                     border_thickness.top *= -1;
                 }
@@ -575,7 +577,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
 
                 // Extend the frame into the client area.
                 MARGINS margins = { 0 };
-                auto hr = DwmExtendFrameIntoClientArea(hWnd, &margins);
+                HRESULT hr = DwmExtendFrameIntoClientArea(hWnd, &margins);
 
                 if (!SUCCEEDED(hr))
                 {
@@ -1273,7 +1275,7 @@ static LRESULT CALLBACK windowProc(HWND hWnd, UINT uMsg,
 
             // Extend the frame into the client area.
             MARGINS margins = { 0 };
-            auto hr = DwmExtendFrameIntoClientArea(hWnd, &margins);
+            HRESULT hr = DwmExtendFrameIntoClientArea(hWnd, &margins);
 
             if (!SUCCEEDED(hr))
             {
