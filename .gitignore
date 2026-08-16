@@ -1,0 +1,24 @@
+# Directories
+.vs/
+bin/
+bin-int/
+
+# Files
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+*.sln
+
+# Exclude
+!vendor/bin
+
+# From ray-tracer
+build
+vendor/glm
+vendor/googletest
+.clang-format
+.clangd
+AutoBuildAndRun.ps1
+image.ppm
+image2.ppm
+.~lock.image.ppm#

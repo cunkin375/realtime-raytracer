@@ -1,0 +1,9 @@
+build
+vendor/glm
+vendor/googletest
+.clang-format
+.clangd
+AutoBuildAndRun.ps1
+image.ppm
+image2.ppm
+.~lock.image.ppm#
