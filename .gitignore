@@ -13,10 +13,10 @@ bin-int/
 
 # Exclude
 !vendor/bin
+!.ignore
 
 # From RayTracer
 build
-vendor/glm
 vendor/googletest
 .clang-format
 .clangd
