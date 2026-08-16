@@ -5,61 +5,41 @@
 
 #include "Numbers.hpp"
 
-namespace Math::Rand
+namespace Math
 {
 
-/* Generates a random number between given min and max */
-template <Number T>
-constexpr T GenerateRandomNumber(T min, T max)
+class Random
 {
-    thread_local static auto random_device = std::random_device{};
-    thread_local static auto generator = std::mt19937{random_device()};
-    if constexpr (std::integral<T>)
-    {
-        auto distribution = std::uniform_int_distribution<T>{min, max};
-        return distribution(generator);
-    }
-    else
-    {
-        auto distribution = std::uniform_real_distribution<T>{min, max};
-        return distribution(generator);
-    }
-}
+private:
+    inline static std::mt19937 generator_;
+    inline static std::uniform_int_distribution<std::mt19937::result_type> distribution_;
 
-/* Generates a random number */
-template <Number T>
-constexpr T GenerateRandomNumber()
-{
-    thread_local static auto random_device = std::random_device{};
-    thread_local static auto generator = std::mt19937{random_device()};
-    if constexpr (std::integral<T>)
+public:
+    /* Generates a random number between given min and max */
+    template <Number T>
+    static constexpr T GenerateRandomNumber(T min, T max)
     {
-        auto distribution = std::uniform_int_distribution<T>{};
-        return distribution(generator);
+        if constexpr (std::integral<T>) return distribution_(generator_);
+        else return static_cast<T>(distribution_(generator_));
     }
-    else
-    {
-        auto distribution = std::uniform_real_distribution<T>{};
-        return distribution(generator);
-    }
-}
 
-/* Generates a random number between 0 and 1 */
-template <Number T>
-constexpr T GenerateRandomNormalizedNumber()
-{
-    thread_local static auto random_device = std::random_device{};
-    thread_local static auto generator = std::mt19937{random_device()};
-    if constexpr (std::integral<T>)
+    /* Generates a random number */
+    template <Number T>
+    static constexpr T GenerateRandomNumber()
     {
-        auto distribution = std::uniform_int_distribution<T>{0, 1};
-        return distribution(generator);
+        if constexpr (std::integral<T>) return distribution_(generator_);
+        else return static_cast<T>(distribution_(generator_));
     }
-    else
-    {
-        auto distribution = std::uniform_real_distribution<T>{0, 1};
-        return distribution(generator);
-    }
-}
 
-} // namespace Math::Rand
+    /* Generates a random number between 0 and 1 */
+    template <Number T>
+    static constexpr T GenerateRandomNormalizedNumber()
+    {
+        if constexpr (std::integral<T>) return distribution_(generator_);
+        else return static_cast<T>(distribution_(generator_));
+    }
+};
+
+using Rand = Random;
+
+} // namespace Math
