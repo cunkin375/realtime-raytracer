@@ -8,11 +8,13 @@ bin-int/
 *.vcxproj.user
 *.vcxproj.filters
 *.sln
+*.ps1
+*.ini
 
 # Exclude
 !vendor/bin
 
-# From ray-tracer
+# From RayTracer
 build
 vendor/glm
 vendor/googletest

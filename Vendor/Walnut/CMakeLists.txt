@@ -4,7 +4,15 @@ project(Walnut)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Find Vulkan
+if (NOT IS_DIRECTORY $ENV{VULKAN_SDK})
+    message(WARNING "Vulkan SDK not detected, if installed set
+                     VULKAN_SDK env variable or manually provide libraries")
+else()
+    message(STATUS "Found Vulkan SDK in $ENV{VULKAN_SDK}")
+endif()
+
+include_directories(SYSTEM $ENV{VULKAN_SDK}/include)
+
 find_package(Vulkan REQUIRED)
 
 # Dependencies
@@ -14,7 +22,7 @@ set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 add_subdirectory(vendor/GLFW)
 
-# imgui (using the CMakeLists.txt we just created)
+# imgui
 add_subdirectory(vendor/imgui)
 
 # Interface libraries for headers
