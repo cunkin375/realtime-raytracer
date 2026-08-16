@@ -4,18 +4,18 @@
 // ======================================================================================================
 
 Camera::Camera(f64 _aspect_ratio, std::size_t _image_width)
-    : aspect_ratio{_aspect_ratio}, image_width{_image_width}
+    : aspect_ratio{ _aspect_ratio }, image_width{ _image_width }
 {
 }
 
 Camera::Camera(f64 _aspect_ratio, std::size_t _image_width, std::size_t _samples_per_pixel)
-    : aspect_ratio{_aspect_ratio}, image_width{_image_width}, samples_per_pixel{_samples_per_pixel}
+    : aspect_ratio{ _aspect_ratio }, image_width{ _image_width }, samples_per_pixel{ _samples_per_pixel }
 {
 }
 
 Camera::Camera(f64 _aspect_ratio, std::size_t _image_width, std::size_t _samples_per_pixel, f64 _vertical_fov)
-    : aspect_ratio{_aspect_ratio}, image_width{_image_width}, samples_per_pixel{_samples_per_pixel},
-      vertical_fov{_vertical_fov}
+    : aspect_ratio{ _aspect_ratio }, image_width{ _image_width }, samples_per_pixel{ _samples_per_pixel },
+      vertical_fov{ _vertical_fov }
 {
 }
 
@@ -30,7 +30,7 @@ dRay Camera::GetRay(std::size_t i, std::size_t j) const
     auto ray_origin = (defocus_angle <= 0) ? camera_center_ : DefocusDiskSample();
     auto ray_direction = pixel_sample - ray_origin;
     auto ray_time = Math::Rand::GenerateRandomNormalizedNumber<f64>();
-    return dRay{ray_origin, ray_direction, ray_time};
+    return dRay{ ray_origin, ray_direction, ray_time };
 }
 
 dPoint3 Camera::DefocusDiskSample() const
@@ -42,8 +42,8 @@ dPoint3 Camera::DefocusDiskSample() const
 dVector3 Camera::SampleSquare() const
 {
     using namespace Math;
-    return dVector3{Rand::GenerateRandomNormalizedNumber<f64>() - 0.5,
-                    Rand::GenerateRandomNormalizedNumber<f64>() - 0.5, 0};
+    return dVector3{ Rand::GenerateRandomNormalizedNumber<f64>() - 0.5,
+                     Rand::GenerateRandomNormalizedNumber<f64>() - 0.5, 0 };
 }
 
 void Camera::InitializePass()

@@ -17,14 +17,14 @@ private:
 
 public:
     constexpr Matrix4D()
-        : data_{1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
-                0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f}
+        : data_{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f,
+                 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f }
     {
     }
 
-    constexpr Matrix4D(const std::array<float, 16zu> &array) : data_{array} {}
+    constexpr Matrix4D(const std::array<float, 16zu> &array) : data_{ array } {}
 
-    constexpr Matrix4D(const std::array<float, 16zu> &&array) : data_{std::move(array)} {}
+    constexpr Matrix4D(const std::array<float, 16zu> &&array) : data_{ std::move(array) } {}
 
     /* matrix *= matrix */
     // Matrix4 should be 64-bytes, which fits into an entire cache line
@@ -32,12 +32,12 @@ public:
     constexpr Matrix4D &operator*=(const Matrix4D &right)
     {
         std::array<float, 16zu> result_data{};
-        for (auto column{0zu}; column < 4; ++column)
+        for (auto column{ 0zu }; column < 4; ++column)
         {
-            for (auto k{0zu}; k < 4; ++k)
+            for (auto k{ 0zu }; k < 4; ++k)
             {
                 float right_value = right.data_[k + column * 4];
-                for (auto row{0zu}; row < 4; ++row)
+                for (auto row{ 0zu }; row < 4; ++row)
                 {
                     result_data[row + column * 4] += data_[row + k * 4] * right_value;
                 }
@@ -64,8 +64,8 @@ public:
                                                     const Matrix4D &right_matrix) = default;
 
     constexpr Matrix4D(fVector3 translation)
-        : data_{1.0f, 0.0f, 0.0f, 0.0f, 0.0f,          1.0f,          0.0f,          0.0f,
-                0.0f, 0.0f, 1.0f, 0.0f, translation.x, translation.y, translation.z, 1.0f}
+        : data_{ 1.0f, 0.0f, 0.0f, 0.0f, 0.0f,          1.0f,          0.0f,          0.0f,
+                 0.0f, 0.0f, 1.0f, 0.0f, translation.x, translation.y, translation.z, 1.0f }
     {
     }
 
@@ -75,9 +75,9 @@ public:
         const auto forward = fVector3::Normalize(eye - look_at);
         const auto right = fVector3::CrossProduct(up, forward).Normalize();
         const auto true_up = fVector3::CrossProduct(forward, right).Normalize();
-        const auto matrix = Matrix4D{{right.x, true_up.x, forward.x, 0.0f, right.y, true_up.y, forward.y,
-                                      0.0f, right.z, true_up.z, forward.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f}};
-        return matrix * Matrix4D{-eye};
+        const auto matrix = Matrix4D{ { right.x, true_up.x, forward.x, 0.0f, right.y, true_up.y, forward.y,
+                                        0.0f, right.z, true_up.z, forward.z, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f } };
+        return matrix * Matrix4D{ -eye };
     }
 
     // NOTE: jesus christ this is ugly, but it runs!
@@ -90,10 +90,10 @@ public:
         const auto b = -t;
         const auto r = t * aspect_ratio;
         const auto l = b * aspect_ratio;
-        return Matrix4D{{(2.0f * near_plane) / (r - l), 0.0f, 0.0f, 0.0f, 0.0f, (2.0f * near_plane) / (t - b),
-                         0.0f, 0.0f, (r + l) / (r - l), (t + b) / (t - b),
-                         -(far_plane + near_plane) / (far_plane - near_plane), -1.0f, 0.0f, 0.0f,
-                         -(2.0f * far_plane * near_plane) / (far_plane - near_plane), 0.0f}};
+        return Matrix4D{ { (2.0f * near_plane) / (r - l), 0.0f, 0.0f, 0.0f, 0.0f,
+                           (2.0f * near_plane) / (t - b), 0.0f, 0.0f, (r + l) / (r - l), (t + b) / (t - b),
+                           -(far_plane + near_plane) / (far_plane - near_plane), -1.0f, 0.0f, 0.0f,
+                           -(2.0f * far_plane * near_plane) / (far_plane - near_plane), 0.0f } };
     }
 
     constexpr std::span<const float> GetSpan() const noexcept { return data_; }

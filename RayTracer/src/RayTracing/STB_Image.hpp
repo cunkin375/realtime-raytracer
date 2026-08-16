@@ -12,11 +12,11 @@ class Image
 {
 private:
     unsigned char *byte_data_{};
-    float *file_data_{nullptr};
-    const int bytes_per_pixel_{3};
-    int image_width_{0};
-    int image_height_{0};
-    int bytes_per_scanline_{0};
+    float *file_data_{ nullptr };
+    const int bytes_per_pixel_{ 3 };
+    int image_width_{ 0 };
+    int image_height_{ 0 };
+    int bytes_per_scanline_{ 0 };
 
 public:
     Image() = default;

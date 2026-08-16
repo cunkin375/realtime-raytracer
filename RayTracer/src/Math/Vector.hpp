@@ -218,7 +218,7 @@ struct VectorOperations
     /* -vector */
     friend constexpr Derived operator-(const Derived &right_vector)
     {
-        auto result{right_vector};
+        auto result{ right_vector };
         return -1 * result;
     }
 
@@ -342,11 +342,15 @@ struct Vector : public VectorOperations<Vector<T, N>, T, N>
     // NOTE: this is not a complete implementation, especially for floating point types, but will likely not
     // be used / is not a priority
     [[nodiscard]] constexpr bool ThreeWayCompare(const Vector &other) const noexcept
-    { return data <=> other.data; }
+    {
+        return data <=> other.data;
+    }
 
     template <typename Self>
     constexpr auto &&operator[](this Self &&self, std::size_t i)
-    { return std::forward_like<Self>(self).data[i]; }
+    {
+        return std::forward_like<Self>(self).data[i];
+    }
 };
 
 /*** Specialization for N = 2 ***/
@@ -358,16 +362,20 @@ struct Vector<T, 2zu> : public VectorOperations<Vector<T, 2zu>, T, 2zu>
     T x{}, y{};
 
     constexpr Vector() = default;
-    constexpr Vector(T _x, T _y) : x{_x}, y{_y} {}
-    constexpr Vector(T scalar) : x{scalar}, y{scalar} {}
+    constexpr Vector(T _x, T _y) : x{ _x }, y{ _y } {}
+    constexpr Vector(T scalar) : x{ scalar }, y{ scalar } {}
 
     [[nodiscard]] constexpr bool IsEqual(const Vector &other) const noexcept
-    { return (x == other.x && y == other.y); }
+    {
+        return (x == other.x && y == other.y);
+    }
 
     // NOTE: this is not a complete implementation, especially for floating point types, but will likely not
     // be used / is not a priority
     [[nodiscard]] constexpr bool ThreeWayCompare(const Vector &other) const noexcept
-    { return (x <=> other.x && y <=> other.y); }
+    {
+        return (x <=> other.x && y <=> other.y);
+    }
 
     template <typename Self>
     constexpr auto &&operator[](this Self &&self, std::size_t i)
@@ -387,7 +395,7 @@ struct Math3D
         auto x_param = left.y * right.z - left.z * right.y;
         auto y_param = left.z * right.x - left.x * right.z;
         auto z_param = left.x * right.y - left.y * right.x;
-        return {x_param, y_param, z_param};
+        return { x_param, y_param, z_param };
     }
 
     // x: 0, y: 1, z: 2
@@ -397,7 +405,7 @@ struct Math3D
         auto x_param = self[1] * other[2] - self[2] * other[1];
         auto y_param = self[2] * other[0] - self[0] * other[2];
         auto z_param = self[0] * other[1] - self[1] * other[0];
-        return Derived{x_param, y_param, z_param};
+        return Derived{ x_param, y_param, z_param };
     }
 
     static constexpr Derived ReflectFromSurfaceNormal(const Derived &incoming_vector,
@@ -442,17 +450,21 @@ struct Vector<T, 3zu> : public VectorOperations<Vector<T, 3zu>, T, 3zu>, public 
     T x{}, y{}, z{};
 
     constexpr Vector() = default;
-    constexpr Vector(T _x, T _y, T _z) : x{_x}, y{_y}, z{_z} {}
-    constexpr Vector(T scalar) : x{scalar}, y{scalar}, z{scalar} {}
-    constexpr Vector(Color<T, 3zu> color) : x{color.r}, y{color.g}, z{color.b} {}
+    constexpr Vector(T _x, T _y, T _z) : x{ _x }, y{ _y }, z{ _z } {}
+    constexpr Vector(T scalar) : x{ scalar }, y{ scalar }, z{ scalar } {}
+    constexpr Vector(Color<T, 3zu> color) : x{ color.r }, y{ color.g }, z{ color.b } {}
 
     [[nodiscard]] constexpr bool IsEqual(const Vector &other) const noexcept
-    { return (x == other.x && y == other.y && z == other.z); }
+    {
+        return (x == other.x && y == other.y && z == other.z);
+    }
 
     // NOTE: this is not a complete implementation, especially for floating point types, but will likely not
     // be used / is not a priority
     [[nodiscard]] constexpr bool ThreeWayCompare(const Vector &other) const noexcept
-    { return (x <=> other.x && y <=> other.y && z <=> other.z); }
+    {
+        return (x <=> other.x && y <=> other.y && z <=> other.z);
+    }
 
     template <typename Self>
     constexpr auto &&operator[](this Self &&self, std::size_t i)
@@ -469,17 +481,21 @@ struct Color<T, 3zu> : public VectorOperations<Color<T, 3zu>, T, 3zu>, public Ma
     T r{}, g{}, b{};
 
     constexpr Color() = default;
-    constexpr Color(T _r, T _g, T _b) : r{_r}, g{_g}, b{_b} {}
-    constexpr Color(T scalar) : r{scalar}, g{scalar}, b{scalar} {}
-    constexpr Color(Vector<T, 3zu> vector) : r{vector.x}, g{vector.y}, b{vector.z} {}
+    constexpr Color(T _r, T _g, T _b) : r{ _r }, g{ _g }, b{ _b } {}
+    constexpr Color(T scalar) : r{ scalar }, g{ scalar }, b{ scalar } {}
+    constexpr Color(Vector<T, 3zu> vector) : r{ vector.x }, g{ vector.y }, b{ vector.z } {}
 
     [[nodiscard]] constexpr bool IsEqual(const Color &other) const noexcept
-    { return (r == other.r && g == other.g && b == other.b); }
+    {
+        return (r == other.r && g == other.g && b == other.b);
+    }
 
     // NOTE: this is not a complete implementation, especially for floating point types, but will likely not
     // be used / is not a priority
     [[nodiscard]] constexpr bool ThreeWayCompare(const Color &other) const noexcept
-    { return (r <=> other.r && g <=> other.g && b <=> other.b); }
+    {
+        return (r <=> other.r && g <=> other.g && b <=> other.b);
+    }
 
     template <typename Self>
     constexpr auto &&operator[](this Self &&self, std::size_t i)
@@ -515,7 +531,7 @@ struct std::formatter<Math::Vector<T, N>>
     constexpr auto format(const Math::Vector<T, N> &object, std::format_context &context) const
     {
         auto out = std::format_to(context.out(), "[");
-        for (auto i{0zu}; i < N; ++i)
+        for (auto i{ 0zu }; i < N; ++i)
         {
             out = std::format_to(out, "{}{}", object[i], (i < N - 1) ? ", " : "");
         }

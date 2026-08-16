@@ -46,7 +46,7 @@ int Image::Height() const noexcept { return (file_data_ == nullptr) ? 0 : image_
 
 const unsigned char *Image::PixelData(int x, int y) const noexcept
 {
-    static unsigned char magenta[] = {255, 0, 255};
+    static unsigned char magenta[] = { 255, 0, 255 };
     if (byte_data_ == nullptr) return magenta;
 
     x = Math::Interval<int>::Clamp(x, 0, image_width_);
@@ -65,7 +65,7 @@ void Image::ConvertToBytes()
 
     auto *byte_pointer = byte_data_;
     auto *file_pointer = file_data_;
-    for (auto i{0zu}; i < total_bytes; ++i, ++byte_pointer, ++file_pointer)
+    for (auto i{ 0zu }; i < total_bytes; ++i, ++byte_pointer, ++file_pointer)
     {
         *byte_pointer = FloatToByte(*file_pointer);
     }

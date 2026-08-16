@@ -25,8 +25,8 @@ private:
 public:
     Lambertian() = default;
 
-    Lambertian(const dColor &albedo) : texture_{albedo} {}
-    Lambertian(const Texture &texture) : texture_{texture} {}
+    Lambertian(const dColor &albedo) : texture_{ albedo } {}
+    Lambertian(const Texture &texture) : texture_{ texture } {}
 
     std::optional<ScatterRecord> Scatter(const dRay &ray_in, const HitRecord &record) const;
 };
@@ -34,15 +34,15 @@ public:
 struct Metal
 {
 private:
-    dColor albedo_{0.5};
-    f64 fuzz_{1.0};
+    dColor albedo_{ 0.5 };
+    f64 fuzz_{ 1.0 };
 
 public:
     Metal() = default;
 
-    Metal(const dColor &albedo) : albedo_{albedo} {}
+    Metal(const dColor &albedo) : albedo_{ albedo } {}
 
-    Metal(const dColor &albedo, f64 fuzz) : albedo_{albedo}, fuzz_{fuzz} {}
+    Metal(const dColor &albedo, f64 fuzz) : albedo_{ albedo }, fuzz_{ fuzz } {}
 
     std::optional<ScatterRecord> Scatter(const dRay &ray_in, const HitRecord &record) const;
 };
@@ -57,7 +57,7 @@ private:
 public:
     Dielectric() = default;
 
-    Dielectric(f64 refraction_index) : refraction_index_{refraction_index} {}
+    Dielectric(f64 refraction_index) : refraction_index_{ refraction_index } {}
 
     std::optional<ScatterRecord> Scatter(const dRay &ray_in, const HitRecord &record) const;
 };

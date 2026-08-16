@@ -53,7 +53,9 @@ namespace [[deprecated("Use Vector.hpp instead!!!")]] Math
         // - Only evaluated if used
         // - Ex of Argument-Dependeint Lookup (ADL)
         friend constexpr Vector operator+(Vector left_vector, const Vector &right_vector)
-        { return left_vector += right_vector; }
+        {
+            return left_vector += right_vector;
+        }
 
         friend constexpr Vector operator*(Vector vector, T scalar) { return vector *= scalar; }
     };
@@ -85,7 +87,9 @@ namespace [[deprecated("Use Vector.hpp instead!!!")]] Math
         friend constexpr Vector operator+(Vector left, const Vector &right) { return left += right; }
 
         friend constexpr Vector operator*(Vector vector, T scalar)
-        { return Vector(vector.x * scalar, vector.y * scalar); }
+        {
+            return Vector(vector.x * scalar, vector.y * scalar);
+        }
     };
 
 } // namespace Math

@@ -12,18 +12,21 @@ private:
 
 public:
     AutoRelease() : AutoRelease({}, nullptr) {}
-    AutoRelease(T object, std::function<void(T)> deleter) noexcept : object_{object}, deleter_{deleter} {}
+    AutoRelease(T object, std::function<void(T)> deleter) noexcept : object_{ object }, deleter_{ deleter } {}
 
     // Delete copy constructors
     AutoRelease(const AutoRelease &) = delete;
     AutoRelease &operator=(const AutoRelease &) = delete;
 
-    AutoRelease(AutoRelease &&other) noexcept : object_{other.object_}, deleter_{std::move(other.deleter_)}
-    { other.object_ = Invalid; }
+    AutoRelease(AutoRelease &&other) noexcept
+        : object_{ other.object_ }, deleter_{ std::move(other.deleter_) }
+    {
+        other.object_ = Invalid;
+    }
 
     AutoRelease &operator=(AutoRelease &&other) noexcept
     {
-        auto new_object = AutoRelease{std::move(other)};
+        auto new_object = AutoRelease{ std::move(other) };
         Swap(new_object);
         return *this;
     }

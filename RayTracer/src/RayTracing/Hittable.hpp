@@ -46,7 +46,7 @@ struct HittableList
 {
 public:
     std::tuple<std::vector<ShapeArgs>...> object_pools{};
-    std::size_t num_objects{0};
+    std::size_t num_objects{ 0 };
 
 private:
     AABB<f64> bounding_box_;
@@ -58,14 +58,14 @@ public:
     void Add(Shape object)
     {
         std::get<std::vector<Shape>>(object_pools).push_back(std::move(object));
-        bounding_box_ = AABB{bounding_box_, object.BoundingBox()};
+        bounding_box_ = AABB{ bounding_box_, object.BoundingBox() };
         num_objects++;
     }
 
     constexpr std::optional<HitRecord> Hit(const dRay &ray, dInterval ray_interval) const
     {
         auto return_record = HitRecord{};
-        auto hit_anything = bool{false};
+        auto hit_anything = bool{ false };
         auto closest_so_far = ray_interval.upper;
 
         // fold over each <Shape> type's vector for all <... ShapeArgs>
@@ -77,7 +77,7 @@ public:
                      {
                          for (const auto &object : pool)
                          {
-                             if (auto temp = object.Hit(ray, dInterval{ray_interval.lower, closest_so_far}))
+                             if (auto temp = object.Hit(ray, dInterval{ ray_interval.lower, closest_so_far }))
                              {
                                  hit_anything = true;
                                  closest_so_far = temp->distance;
@@ -89,13 +89,13 @@ public:
             },
             object_pools); // apply this fold to object_pools
 
-        return hit_anything ? std::optional{return_record} : std::nullopt;
+        return hit_anything ? std::optional{ return_record } : std::nullopt;
     }
 
     std::vector<HittableReference> BuildReferenceVector(const auto &object_pools) const
     {
         auto references = std::vector<HittableReference>{};
-        auto pool_index = std::size_t{0};
+        auto pool_index = std::size_t{ 0 };
 
         // looks nightmarish but this just makes a vector of references to each type pool
         std::apply(
@@ -104,11 +104,11 @@ public:
                 ((
                      [&](const auto &pool)
                      {
-                         for (auto i{0zu}; i < pool.size(); ++i)
+                         for (auto i{ 0zu }; i < pool.size(); ++i)
                          {
-                             references.push_back(HittableReference{.pool_index = pool_index,
-                                                                    .object_index = i,
-                                                                    .bounding_box = pool[i].BoundingBox()});
+                             references.push_back(HittableReference{ .pool_index = pool_index,
+                                                                     .object_index = i,
+                                                                     .bounding_box = pool[i].BoundingBox() });
                          }
                          ++pool_index;
                      }(pools)),
@@ -142,7 +142,7 @@ struct HitFunctionDispatchTable
     constexpr HitFunctionDispatchTable(const std::tuple<std::vector<ShapeArgs>...> &pools)
     {
         // build pool_pointers
-        auto index = std::size_t{0};
+        auto index = std::size_t{ 0 };
         std::apply([&](const auto &...vectors)
                    { ((pool_pointers[index++] = static_cast<const void *>(&vectors)), ...); }, pools);
 

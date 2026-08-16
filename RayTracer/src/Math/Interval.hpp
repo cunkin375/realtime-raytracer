@@ -17,9 +17,9 @@ public:
 
 public:
     // this should represent empty constant
-    constexpr Interval() : lower{PositiveInfinity()}, upper{NegativeInfinity()} {}
+    constexpr Interval() : lower{ PositiveInfinity() }, upper{ NegativeInfinity() } {}
 
-    constexpr Interval(T lower, T upper) : lower{lower}, upper{upper} {}
+    constexpr Interval(T lower, T upper) : lower{ lower }, upper{ upper } {}
 
     constexpr Interval(const Interval &left, const Interval &right)
     {
@@ -62,11 +62,14 @@ public:
     constexpr Interval Expand(T delta) const
     {
         auto padding = delta / 2;
-        return {lower - padding, upper + padding};
+        return { lower - padding, upper + padding };
     }
 
-    static constexpr Interval Empty()    { return {.lower = PositiveInfinity(), .upper = NegativeInfinity()}; }
-    static constexpr Interval Universe() { return {.lower = NegativeInfinity(), .upper = PositiveInfinity()}; }
+    static constexpr Interval Empty() { return { .lower = PositiveInfinity(), .upper = NegativeInfinity() }; }
+    static constexpr Interval Universe()
+    {
+        return { .lower = NegativeInfinity(), .upper = PositiveInfinity() };
+    }
 };
 
 } // namespace Math

@@ -20,22 +20,22 @@ using DebounceInfo = std::chrono::steady_clock::time_point;
 struct DirectoryWatcher::Implementation
 {
     // Win32 specific
-    HANDLE directory_handle{INVALID_HANDLE_VALUE};
-    HANDLE event_handle{nullptr}; // manual reset event for OVERLAPPED
+    HANDLE directory_handle{ INVALID_HANDLE_VALUE };
+    HANDLE event_handle{ nullptr }; // manual reset event for OVERLAPPED
     OVERLAPPED overlapped{};
-    bool pending_read{false};
+    bool pending_read{ false };
     alignas(DWORD) char buffer[4096];
 
     // Common across implementations
     std::filesystem::path root_directory{};
     Callback callback_function{};
-    bool enabled{false};
-    bool recursive{true};
+    bool enabled{ false };
+    bool recursive{ true };
     StringMap<DebounceInfo> file_timers;
-    std::chrono::milliseconds debounce_time_milliseconds{250};
+    std::chrono::milliseconds debounce_time_milliseconds{ 250 };
 
     Implementation(const std::filesystem::path &_watch_dir, Callback _on_change, bool _recursive)
-        : root_directory{_watch_dir}, callback_function{std::move(_on_change)}, recursive{_recursive}
+        : root_directory{ _watch_dir }, callback_function{ std::move(_on_change) }, recursive{ _recursive }
     {
         directory_handle =
             CreateFileW(root_directory.c_str(), FILE_LIST_DIRECTORY,
@@ -79,8 +79,8 @@ struct DirectoryWatcher::Implementation
 
         auto has_shader_extension = [](std::string_view name) -> bool
         {
-            constexpr std::string_view extensions[] = {".vert", ".frag", ".geom", ".tesc",
-                                                       ".tese", ".comp", ".glsl"};
+            constexpr std::string_view extensions[] = { ".vert", ".frag", ".geom", ".tesc",
+                                                        ".tese", ".comp", ".glsl" };
             for (auto extension : extensions)
             {
                 if (name.size() >= extension.size() &&
@@ -113,7 +113,7 @@ struct DirectoryWatcher::Implementation
             return should_not_debounce;
         }
 
-        file_timers.emplace(std::string{filename}, DebounceInfo{now});
+        file_timers.emplace(std::string{ filename }, DebounceInfo{ now });
         return should_not_debounce;
     }
 
@@ -180,9 +180,9 @@ struct DirectoryWatcher::Implementation
             auto *info = reinterpret_cast<FILE_NOTIFY_INFORMATION *>(ptr);
 
             std::wstring wide_name(info->FileName, info->FileNameLength / sizeof(WCHAR));
-            std::filesystem::path relative_path{wide_name};
+            std::filesystem::path relative_path{ wide_name };
 
-            std::string_view filename{relative_path.filename().string()};
+            std::string_view filename{ relative_path.filename().string() };
 
             if (!ShouldDebounce(filename))
             {
@@ -213,7 +213,7 @@ struct DirectoryWatcher::Implementation
                 } std::cout << "\n";
                 // clang-format on
 
-                callback_function(FileEvent{action, full_path});
+                callback_function(FileEvent{ action, full_path });
             }
 
             // at the end of the list, return
@@ -230,7 +230,7 @@ struct DirectoryWatcher::Implementation
 // === PUBLIC METHODS ===
 
 DirectoryWatcher::DirectoryWatcher(const std::filesystem::path &watch_dir, Callback on_change, bool recursive)
-    : impl_{std::make_unique<Implementation>(watch_dir, std::move(on_change), recursive)}
+    : impl_{ std::make_unique<Implementation>(watch_dir, std::move(on_change), recursive) }
 {
 }
 

@@ -22,7 +22,7 @@ constexpr void WriteColor(std::ostream &out, const dColor &pixel_color)
     auto g = LinearToGamma(pixel_color.g);
     auto b = LinearToGamma(pixel_color.b);
 
-    static const auto intensity = dInterval{0.000, 0.999};
+    static const auto intensity = dInterval{ 0.000, 0.999 };
     i32 rbyte = i32(256 * intensity.Clamp(r));
     i32 gbyte = i32(256 * intensity.Clamp(g));
     i32 bbyte = i32(256 * intensity.Clamp(b));

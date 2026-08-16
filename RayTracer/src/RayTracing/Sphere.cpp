@@ -26,20 +26,20 @@ static void GetSphereUV(const dPoint3 &point, f64 &u, f64 &v)
 
 // stationary sphere
 Sphere::Sphere(const dPoint3 &static_center, f64 radius, Material material)
-    : center_{static_center, dVector3{0, 0, 0}}, radius_{std::fmax(0, radius)}, material_{material}
+    : center_{ static_center, dVector3{ 0, 0, 0 } }, radius_{ std::fmax(0, radius) }, material_{ material }
 {
-    auto radius_vector = dVector3{radius, radius, radius};
-    bounding_box_ = AABB{static_center - radius_vector, static_center + radius_vector};
+    auto radius_vector = dVector3{ radius, radius, radius };
+    bounding_box_ = AABB{ static_center - radius_vector, static_center + radius_vector };
 }
 
 // moving sphere
 Sphere::Sphere(const dPoint3 &center1, const dPoint3 &center2, f64 radius, Material material_)
-    : center_{center1, center2 - center1}, radius_{std::fmax(0, radius)}, material_{material_}
+    : center_{ center1, center2 - center1 }, radius_{ std::fmax(0, radius) }, material_{ material_ }
 {
-    auto radius_vector = dVector3{radius, radius, radius};
-    auto box_1 = AABB<f64>{center_.At(0) - radius_vector, center_.At(0) + radius_vector};
-    auto box_2 = AABB<f64>{center_.At(1) - radius_vector, center_.At(1) + radius_vector};
-    bounding_box_ = AABB<f64>{box_1, box_2};
+    auto radius_vector = dVector3{ radius, radius, radius };
+    auto box_1 = AABB<f64>{ center_.At(0) - radius_vector, center_.At(0) + radius_vector };
+    auto box_2 = AABB<f64>{ center_.At(1) - radius_vector, center_.At(1) + radius_vector };
+    bounding_box_ = AABB<f64>{ box_1, box_2 };
 }
 
 /* Hit function that solves quadratic with DotProduct(direction, origin center)->double */

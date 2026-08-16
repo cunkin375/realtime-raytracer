@@ -12,16 +12,17 @@ private:
     AABB<f64> bounding_box_;
     std::unique_ptr<BVH_Node> left_, right_;
     // for leaf nodes
-    std::size_t reference_start_{0}, reference_end_{0};
-    bool is_leaf_{false};
+    std::size_t reference_start_{ 0 }, reference_end_{ 0 };
+    bool is_leaf_{ false };
 
 public:
     BVH_Node(std::vector<HittableReference> &references, std::size_t start, std::size_t end)
     {
         // combine bounding box of given span
         auto combined = AABB<f64>{};
-        for (auto i{start}; i < end; ++i) {
-            combined = AABB{combined, references[i].bounding_box};
+        for (auto i{ start }; i < end; ++i)
+        {
+            combined = AABB{ combined, references[i].bounding_box };
         }
 
         bounding_box_ = combined;
@@ -29,7 +30,8 @@ public:
         auto span = end - start;
 
         // leaf node
-        if (span <= 2) {
+        if (span <= 2)
+        {
             is_leaf_ = true;
             reference_start_ = start;
             reference_end_ = end;
@@ -38,9 +40,8 @@ public:
 
         auto axis = combined.LongestAxis();
 
-        auto comparator = [axis](const HittableReference &a, const HittableReference &b) {
-            return a.bounding_box.AxisInterval(axis).lower < b.bounding_box.AxisInterval(axis).lower;
-        };
+        auto comparator = [axis](const HittableReference &a, const HittableReference &b)
+        { return a.bounding_box.AxisInterval(axis).lower < b.bounding_box.AxisInterval(axis).lower; };
 
         std::sort(references.begin() + start, references.begin() + end, comparator);
 
@@ -58,12 +59,15 @@ public:
         // this branch is the entire season ~600 lines were changed
         if (!bounding_box_.Hit(ray, ray_interval)) return std::nullopt;
 
-        if (is_leaf_) {
+        if (is_leaf_)
+        {
             auto result = std::optional<HitRecord>{};
             auto closest = ray_interval.upper;
 
-            for (auto i{reference_start_}; i < reference_end_; ++i) {
-                if (auto hit = dispatch.Hit(references[i], ray, dInterval{ray_interval.lower, closest})) {
+            for (auto i{ reference_start_ }; i < reference_end_; ++i)
+            {
+                if (auto hit = dispatch.Hit(references[i], ray, dInterval{ ray_interval.lower, closest }))
+                {
                     closest = hit->distance;
                     result = hit;
                 }
@@ -75,7 +79,7 @@ public:
 
         // skip if left has hit something near
         auto hit_right = right_->Hit(
-            ray, dInterval{ray_interval.lower, hit_left ? hit_left->distance : ray_interval.upper},
+            ray, dInterval{ ray_interval.lower, hit_left ? hit_left->distance : ray_interval.upper },
             references, dispatch);
 
         return hit_right ? hit_right : hit_left;
@@ -103,15 +107,19 @@ private:
 
 public:
     BoundingVolumeHierarchy(const HittableList<ShapeArgs...> &world)
-        : shape_pools_{world.object_pools}, references_{world.BuildReferenceVector(world.object_pools)},
-          dispatch_{shape_pools_}
-    { root_ = std::make_unique<BVH_Node>(references_, 0, references_.size()); }
+        : shape_pools_{ world.object_pools }, references_{ world.BuildReferenceVector(world.object_pools) },
+          dispatch_{ shape_pools_ }
+    {
+        root_ = std::make_unique<BVH_Node>(references_, 0, references_.size());
+    }
 
     BoundingVolumeHierarchy(BoundingVolumeHierarchy &&other) = delete;
     BoundingVolumeHierarchy &operator=(BoundingVolumeHierarchy &&other) = delete;
 
     std::optional<HitRecord> Hit(const dRay &ray, dInterval interval) const noexcept
-    { return root_->Hit(ray, interval, references_, dispatch_); }
+    {
+        return root_->Hit(ray, interval, references_, dispatch_);
+    }
 };
 
 template <typename... ShapeArgs>

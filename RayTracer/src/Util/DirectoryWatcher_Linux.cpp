@@ -18,18 +18,18 @@ using DebounceInfo = std::chrono::steady_clock::time_point;
 
 struct DirectoryWatcher::Implementation
 {
-    i32 inotify_fd{-1};
+    i32 inotify_fd{ -1 };
     std::unordered_map<i32, std::filesystem::path> watch_descriptor_to_path{};
     std::filesystem::path root_directory{};
     Callback callback_function{};
-    bool enabled{false};
-    bool recursive{true};
+    bool enabled{ false };
+    bool recursive{ true };
 
     StringMap<DebounceInfo> file_timers;
-    std::chrono::milliseconds debounce_time_milliseconds{250};
+    std::chrono::milliseconds debounce_time_milliseconds{ 250 };
 
     Implementation(const std::filesystem::path &_watch_dir, Callback _on_change, bool _recursive)
-        : root_directory{_watch_dir}, callback_function{std::move(_on_change)}, recursive{_recursive}
+        : root_directory{ _watch_dir }, callback_function{ std::move(_on_change) }, recursive{ _recursive }
     {
         inotify_fd = inotify_init1(IN_NONBLOCK);
         if (-1 == inotify_fd)
@@ -95,8 +95,8 @@ struct DirectoryWatcher::Implementation
 
         auto has_shader_extension = [](std::string_view name) -> bool
         {
-            constexpr std::string_view extensions[] = {".vert", ".frag", ".geom", ".tesc",
-                                                       ".tese", ".comp", ".glsl"};
+            constexpr std::string_view extensions[] = { ".vert", ".frag", ".geom", ".tesc",
+                                                        ".tese", ".comp", ".glsl" };
             for (auto extension : extensions)
             {
                 if (name.size() >= extension.size() &&
@@ -129,7 +129,7 @@ struct DirectoryWatcher::Implementation
             return should_not_debounce;
         }
 
-        file_timers.emplace(std::string{filename}, DebounceInfo{now});
+        file_timers.emplace(std::string{ filename }, DebounceInfo{ now });
         return should_not_debounce;
     }
 
@@ -163,7 +163,7 @@ struct DirectoryWatcher::Implementation
 
             if (event->len > 0)
             {
-                std::string_view filename{event->name, std::strlen(event->name)};
+                std::string_view filename{ event->name, std::strlen(event->name) };
 
                 if (ShouldDebounce(filename))
                 {
@@ -206,7 +206,7 @@ struct DirectoryWatcher::Implementation
                 }
                 std::cout << "\n";
 
-                callback_function(FileEvent{action, full_path});
+                callback_function(FileEvent{ action, full_path });
             }
 
             // Advance pointer to next event
@@ -218,7 +218,7 @@ struct DirectoryWatcher::Implementation
 // === PUBLIC METHODS ===
 
 DirectoryWatcher::DirectoryWatcher(const std::filesystem::path &watch_dir, Callback on_change, bool recursive)
-    : impl_{std::make_unique<Implementation>(watch_dir, std::move(on_change), recursive)}
+    : impl_{ std::make_unique<Implementation>(watch_dir, std::move(on_change), recursive) }
 {
 }
 

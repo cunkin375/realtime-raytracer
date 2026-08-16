@@ -21,9 +21,9 @@ private:
 public:
     SolidColor() = default;
 
-    SolidColor(const dColor &albedo) : albedo_{albedo} {}
+    SolidColor(const dColor &albedo) : albedo_{ albedo } {}
 
-    SolidColor(f64 red, f64 green, f64 blue) : SolidColor{dColor{red, green, blue}} {}
+    SolidColor(f64 red, f64 green, f64 blue) : SolidColor{ dColor{ red, green, blue } } {}
 
     dColor Value(f64 u, f64 v, const dPoint3 &p) const noexcept { return albedo_; }
 };
@@ -40,7 +40,7 @@ public:
     Checker() = default;
 
     Checker(f64 scale, const T &even_texture, const U &odd_texture)
-        : inverse_scale_{1.0 / scale}, even_texture_{even_texture}, odd_texture_{odd_texture}
+        : inverse_scale_{ 1.0 / scale }, even_texture_{ even_texture }, odd_texture_{ odd_texture }
     {
     }
 
@@ -62,16 +62,16 @@ private:
     Image image;
 
 public:
-    ImageTexture(const char *filename) : image{filename} {}
+    ImageTexture(const char *filename) : image{ filename } {}
 
     dColor Value(f64 u, f64 v, const dPoint3 &point) const
     {
         // cyan color for debugging missing texture
-        if (image.Height() <= 0) return dColor{0, 1, 1};
+        if (image.Height() <= 0) return dColor{ 0, 1, 1 };
 
         // clamp texture coords to [0, 1] * [1, 0]
-        u = Math::Interval<f64>{0, 1}.Clamp(u);
-        v = 1.0 - Math::Interval<f64>{0, 1}.Clamp(v);
+        u = Math::Interval<f64>{ 0, 1 }.Clamp(u);
+        v = 1.0 - Math::Interval<f64>{ 0, 1 }.Clamp(v);
 
         auto i = i32(u * image.Width());
         auto j = i32(v * image.Height());
@@ -80,7 +80,7 @@ public:
         auto color_scale = 1.0 / 255.0;
 
         // d pointer arithmetic based on the color scale to visit rgb pixel information in image
-        return dColor{color_scale * pixel[0], color_scale * pixel[1], color_scale * pixel[3]};
+        return dColor{ color_scale * pixel[0], color_scale * pixel[1], color_scale * pixel[3] };
     }
 };
 
@@ -97,12 +97,12 @@ public:
     Texture() = default;
 
     template <typename T>
-    Texture(T &&data) : data_{std::forward<T>(data)}
+    Texture(T &&data) : data_{ std::forward<T>(data) }
     {
     }
 
     // NOTE: this might not be needed
-    Texture(const dColor &data) : data_{Textures::SolidColor{data}} {}
+    Texture(const dColor &data) : data_{ Textures::SolidColor{ data } } {}
 
     dColor Value(f64 u, f64 v, dPoint3 point) const
     {

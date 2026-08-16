@@ -80,10 +80,12 @@ namespace [[deprecated("Use Hittable.hpp instead of HittableOld.hpp!!!")]] Hitta
         }
 
         Hittable(Hittable &&other) noexcept
-            : data_pointer_{other.data_pointer_}, hit_function_pointer_{other.hit_function_pointer_},
-              copy_function_pointer_{other.copy_function_pointer_},
-              destroy_function_pointer_{other.destroy_function_pointer_}
-        { other.data_pointer_ = nullptr; }
+            : data_pointer_{ other.data_pointer_ }, hit_function_pointer_{ other.hit_function_pointer_ },
+              copy_function_pointer_{ other.copy_function_pointer_ },
+              destroy_function_pointer_{ other.destroy_function_pointer_ }
+        {
+            other.data_pointer_ = nullptr;
+        }
 
         ~Hittable()
         {
@@ -120,11 +122,11 @@ namespace [[deprecated("Use Hittable.hpp instead of HittableOld.hpp!!!")]] Hitta
         constexpr std::optional<HitRecord> Hit(const dRay &ray, dInterval ray_interval) const
         {
             auto return_record = HitRecord{};
-            auto hit_anything = bool{false};
+            auto hit_anything = bool{ false };
             auto closest_so_far = ray_interval.upper;
             for (const auto &object : objects)
             {
-                if (auto temp_record = object.Hit(ray, dInterval{ray_interval.lower, closest_so_far});
+                if (auto temp_record = object.Hit(ray, dInterval{ ray_interval.lower, closest_so_far });
                     temp_record != std::nullopt)
                 {
                     hit_anything = true;
@@ -132,7 +134,7 @@ namespace [[deprecated("Use Hittable.hpp instead of HittableOld.hpp!!!")]] Hitta
                     return_record = temp_record.value();
                 }
             }
-            return hit_anything ? std::optional{return_record} : std::nullopt;
+            return hit_anything ? std::optional{ return_record } : std::nullopt;
         }
     };
 

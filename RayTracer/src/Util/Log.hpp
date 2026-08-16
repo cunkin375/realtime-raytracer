@@ -39,7 +39,7 @@ struct Print
           std::source_location location = std::source_location::current())
     {
         std::println("[{}] {}:{} {}", GetLevel(Lvl),
-                     std::filesystem::path{location.file_name()}.filename().string(), location.line(),
+                     std::filesystem::path{ location.file_name() }.filename().string(), location.line(),
                      std::format(message, std::forward<Args>(args)...));
     }
 };

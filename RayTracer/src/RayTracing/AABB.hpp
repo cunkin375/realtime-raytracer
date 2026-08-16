@@ -17,16 +17,19 @@ public:
     constexpr AxisAlignedBoundingBox() = default;
 
     constexpr AxisAlignedBoundingBox(const Interval<T> &_x, const Interval<T> &_y, const Interval<T> &_z)
-        : x{_x}, y{_y}, z{_z}
+        : x{ _x }, y{ _y }, z{ _z }
     {
     }
 
     constexpr AxisAlignedBoundingBox(const Point3<T> &point_a, const Point3<T> &point_b)
     {
         // treat both points as the extremes of the bounding box
-        x = (point_a.x <= point_b.x) ? Interval<T>{point_a.x, point_b.x} : Interval<T>{point_b.x, point_a.x};
-        y = (point_a.y <= point_b.y) ? Interval<T>{point_a.y, point_b.y} : Interval<T>{point_b.y, point_a.y};
-        z = (point_a.z <= point_b.z) ? Interval<T>{point_a.z, point_b.z} : Interval<T>{point_b.z, point_a.z};
+        x = (point_a.x <= point_b.x) ? Interval<T>{ point_a.x, point_b.x }
+                                     : Interval<T>{ point_b.x, point_a.x };
+        y = (point_a.y <= point_b.y) ? Interval<T>{ point_a.y, point_b.y }
+                                     : Interval<T>{ point_b.y, point_a.y };
+        z = (point_a.z <= point_b.z) ? Interval<T>{ point_a.z, point_b.z }
+                                     : Interval<T>{ point_b.z, point_a.z };
     }
 
     constexpr AxisAlignedBoundingBox(const AxisAlignedBoundingBox &box_0, const AxisAlignedBoundingBox &box_1)
@@ -56,7 +59,7 @@ public:
         const dPoint3 ray_origin = ray.origin;
         const dVector3 ray_direction = ray.direction;
 
-        for (auto axis{0zu}; axis < 3; ++axis)
+        for (auto axis{ 0zu }; axis < 3; ++axis)
         {
             const dInterval &axis_interval = AxisInterval(axis);
             const f64 axis_direction_inverse = 1.0 / ray_direction[axis];

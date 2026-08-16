@@ -9,18 +9,18 @@
 class Camera
 {
 public:
-    f64 aspect_ratio{16.0 / 9.0};
-    std::size_t image_width{400};
-    std::size_t samples_per_pixel{10};
-    std::size_t max_depth{10};
+    f64 aspect_ratio{ 16.0 / 9.0 };
+    std::size_t image_width{ 400 };
+    std::size_t samples_per_pixel{ 10 };
+    std::size_t max_depth{ 10 };
 
-    f64 vertical_fov{90};
-    dPoint3 look_from{0, 0, 0};
-    dPoint3 look_at{0, 0, -1};
-    dVector3 vertical_up{0, 1, 0};
+    f64 vertical_fov{ 90 };
+    dPoint3 look_from{ 0, 0, 0 };
+    dPoint3 look_at{ 0, 0, -1 };
+    dVector3 vertical_up{ 0, 1, 0 };
 
-    f64 defocus_angle{0};
-    f64 focus_distance{10};
+    f64 defocus_angle{ 0 };
+    f64 focus_distance{ 10 };
 
 private:
     std::size_t image_height_{};
@@ -73,13 +73,13 @@ void Camera::RenderPass(const WorldType &world)
 
     std::cout << "P3\n" << image_width << " " << image_height_ << "\n255\n";
 
-    for (auto j{0zu}; j < image_height_; ++j)
+    for (auto j{ 0zu }; j < image_height_; ++j)
     {
-        for (auto i{0zu}; i < image_width; ++i)
+        for (auto i{ 0zu }; i < image_width; ++i)
         {
             auto pixel_center = pixel_00_location_ + (i * pixel_delta_u_) + (j * pixel_delta_v_);
             auto ray_direction = pixel_center - camera_center_;
-            auto ray = dRay{camera_center_, ray_direction};
+            auto ray = dRay{ camera_center_, ray_direction };
             dColor pixel_color = RayToColor(ray, max_depth, world);
             ImageColor::WriteColor(std::cout, pixel_color);
         }
@@ -100,17 +100,17 @@ void Camera::AntialiasingRenderPass(const WorldType &world)
 
     // because there are no data races when rendering, trace in parallel
     // each thread starts from a row index from (0, thread_count-1) and wors on the next N * thread_count row
-    for (auto t{0zu}; t < thread_count; ++t)
+    for (auto t{ 0zu }; t < thread_count; ++t)
     {
         threads.emplace_back(
             [&, t]()
             {
-                for (auto j{t}; j < image_height_; j += thread_count)
+                for (auto j{ t }; j < image_height_; j += thread_count)
                 {
-                    for (auto i{0zu}; i < image_width; ++i)
+                    for (auto i{ 0zu }; i < image_width; ++i)
                     {
                         auto pixel_color = dColor{};
-                        for (auto sample{0zu}; sample < samples_per_pixel; ++sample)
+                        for (auto sample{ 0zu }; sample < samples_per_pixel; ++sample)
                         {
                             auto ray = GetRay(i, j);
                             pixel_color += RayToColor(ray, max_depth, world);
@@ -135,10 +135,11 @@ void Camera::AntialiasingRenderPass(const WorldType &world)
 template <typename WorldType>
 dColor Camera::RayToColor(const dRay &ray, std::size_t depth, const WorldType &world) const
 {
-    if (depth <= 0) return dColor{0, 0, 0};
+    if (depth <= 0) return dColor{ 0, 0, 0 };
 
     // if we hit something, render it
-    if (auto record = world.Hit(ray, dInterval{0.001, dInterval::PositiveInfinity()}); record != std::nullopt)
+    if (auto record = world.Hit(ray, dInterval{ 0.001, dInterval::PositiveInfinity() });
+        record != std::nullopt)
     {
 
         auto scatter_result = std::visit([&](const auto &material) { return material.Scatter(ray, *record); },
@@ -154,7 +155,8 @@ dColor Camera::RayToColor(const dRay &ray, std::size_t depth, const WorldType &w
     f64 alpha = 0.5 * (unit_direction.y + 1.0);
 
     // blend from blue up top to white at the bottom
-    return (1.0 - alpha) * /* white */ dColor{1.0, 1.0, 1.0} + alpha * /* light blue */ dColor{0.5, 0.7, 1.0};
+    return (1.0 - alpha) * /* white */ dColor{ 1.0, 1.0, 1.0 } +
+           alpha * /* light blue */ dColor{ 0.5, 0.7, 1.0 };
 }
 
 #undef CAMERA_TPP_INSIDE_
