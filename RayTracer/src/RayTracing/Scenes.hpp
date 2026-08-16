@@ -32,7 +32,7 @@ struct RenderContext
     Camera camera;
 };
 
-inline World InitiateThreeSphereScene()
+inline RenderContext<BVH<Sphere>> InitiateThreeSphereScene(dVector2 viewport = {})
 {
     auto world = World{};
 
@@ -59,7 +59,14 @@ inline World InitiateThreeSphereScene()
     world.Add(left_sphere_bubble);
     world.Add(right_sphere);
 
-    return world;
+    auto camera = Camera{ 16.0 / 9.0, 1200, 50, 50 };
+
+    camera.vertical_fov = 20;
+    camera.look_from = dPoint3{13, 2, 3};
+    camera.look_at = dPoint3{0, 0, 0};
+    camera.vertical_up = dVector3{0, 1, 0};
+
+    return { world, camera };
 }
 
 inline World InitiateTwoSphereScene()
