@@ -1,5 +1,8 @@
 #include "imgui.h"
 
+#include "Math/Vector.hpp"
+
+#include "Camera.hpp"
 #include "Renderer.hpp"
 
 #include "Walnut/Application.h"
@@ -30,11 +33,20 @@ class ExampleLayer : public Walnut::Layer
 {
 private:
     Renderer renderer_{};
+    Camera camera_;
+    Scene scene_;
     u32 viewport_width_{ 0 };
     u32 viewport_height_{ 0 };
     f32 last_render_time_{ 0.f };
 
 public:
+    ExampleLayer() : camera_(45.0f, 0.1f, 100.0f)
+    {
+        scene_.spheres.push_back({ .position{ 0.0f }, .radius = 0.5f, .albedo{ 1, 0, 1 } });
+    }
+
+    virtual void OnUpdate(f32 ts) override { camera_.OnUpdate(ts); }
+
     virtual void OnUIRender() override
     {
         ImGui::Begin("Settings");
@@ -45,19 +57,12 @@ public:
         //     Render();
         // }
 
+        ImGui::DragFloat3("Position", Math::ValuePointer(scene_.spheres.at(0).position), 0.1f);
+        ImGui::DragFloat("Radius", &scene_.spheres.at(0).radius, 0.1f);
         ImGui::Text("Sphere Colors:");
-        if (auto temp = renderer_.GetSphereColors().r; ImGui::SliderFloat("Red", &temp, 0.0f, 1.0f))
-        {
-            UpdateColorValue(temp, RGB::Red);
-        }
-        if (auto temp = renderer_.GetSphereColors().g; ImGui::SliderFloat("Green", &temp, 0.0f, 1.0f))
-        {
-            UpdateColorValue(temp, RGB::Green);
-        }
-        if (auto temp = renderer_.GetSphereColors().b; ImGui::SliderFloat("Blue", &temp, 0.0f, 1.0f))
-        {
-            UpdateColorValue(temp, RGB::Blue);
-        }
+        ImGui::SliderFloat("Red", &scene_.spheres.at(0).albedo.r, 0.0f, 1.0f);
+        ImGui::SliderFloat("Green", &scene_.spheres.at(0).albedo.g, 0.0f, 1.0f);
+        ImGui::SliderFloat("Blue", &scene_.spheres.at(0).albedo.b, 0.0f, 1.0f);
 
         ImGui::Text("Light Direction:");
         if (auto temp = renderer_.GetLightDirection().x; ImGui::SliderFloat("X", &temp, -1.0f, 1.0f))
@@ -98,22 +103,13 @@ public:
         auto timer = Walnut::Timer{};
 
         renderer_.OnResize(viewport_width_, viewport_height_);
-        renderer_.Render();
+        camera_.OnResize(viewport_width_, viewport_height_);
+        renderer_.Render(camera_, scene_);
 
         last_render_time_ = timer.ElapsedMillis();
     }
 
 private:
-    void UpdateColorValue(f32 new_value, RGB channel)
-    {
-        switch (channel)
-        {
-            case RGB::Red: renderer_.SetRed(new_value); break;
-            case RGB::Green: renderer_.SetGreen(new_value); break;
-            case RGB::Blue: renderer_.SetBlue(new_value); break;
-        }
-    }
-
     void UpdateLightDirection(f32 new_value, Direction direction)
     {
         switch (direction)

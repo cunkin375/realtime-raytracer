@@ -346,21 +346,25 @@ struct VectorOperations
         auto result = Derived{};
         // fold over iterator sequence of size N and compare everything
         // clamp to either gven min or max
-        auto compare = [&]<std::size_t... Is>(std::index_sequence<Is...>){
-            (([&](){
-                if (given[Is] < min[Is]) 
-                {
-                    result[Is] = min[Is];
-                }
-                else if (given[Is] > max[Is]) 
-                {
-                    result[Is] = max[Is];
-                }
-                else
-                {
-                    result[Is] = given[Is];
-                }
-            }()), ...); // call inner lambda for each argment
+        auto compare = [&]<std::size_t... Is>(std::index_sequence<Is...>)
+        {
+            ((
+                 [&]()
+                 {
+                     if (given[Is] < min[Is])
+                     {
+                         result[Is] = min[Is];
+                     }
+                     else if (given[Is] > max[Is])
+                     {
+                         result[Is] = max[Is];
+                     }
+                     else
+                     {
+                         result[Is] = given[Is];
+                     }
+                 }()),
+             ...); // call inner lambda for each argment
         };
         compare(std::make_index_sequence<N>{});
         return result;
@@ -590,6 +594,10 @@ using Point2D = Vector<T, 2zu>;
 
 template <Number T>
 using Point3D = Vector<T, 3zu>;
+
+inline float *ValuePointer(Vector3D<float> &vector) { return &vector.x; }
+inline const float *ValuePointer(const Vector3D<float> &vector) { return &vector.x; }
+
 
 } // namespace Math
 
