@@ -2,6 +2,7 @@
 
 #include "Math/Random.hpp"
 
+#include "Math/Vector.hpp"
 #include "Util/Aliases.hpp"
 
 // Public Methods
@@ -21,7 +22,6 @@ void Renderer::OnResize(u32 width, u32 height)
     delete[] image_data_;
     image_data_ = new u32[width * height];
 }
-
 
 void Renderer::Render()
 {
@@ -81,11 +81,35 @@ u32 Renderer::PerPixel(fVector2 coord)
     f32 discriminant = b * b - 4.f * a * c;
 
     if (discriminant >= 0.0f)
-        return 0xffff00ff;
+    {
+        auto t = new float[]{ (-b - std::sqrt(discriminant)) / (2.f * a),
+                              (-b + std::sqrt(discriminant)) / (2.f * a) };
+
+        u32 sphere_color = 0xff000000;
+        fVector3 hit_position = ray_origin + ray_direction * t[0];
+        fVector3 normal = hit_position;
+        normal.Normalize();
+
+        auto shift = 0;
+
+        for (auto j{ 0zu }; j < 3; ++j)
+        {
+            auto bits = 8;
+            u32 max_val = (1U << bits) - 1;
+
+            f32 clamped = std::clamp(normal[j] * 0.5f + 0.5f, 0.f, 1.0f);
+
+            u32 scaled = static_cast<u32>(clamped * max_val + 0.5f);
+
+            sphere_color |= (scaled << shift);
+            shift += bits;
+        }
+
+        return sphere_color;
+    }
 
     u32 color = Math::Rand::GenerateRandomNumber<u32>();
     color |= 0xff000000;
 
     return color;
 }
-
