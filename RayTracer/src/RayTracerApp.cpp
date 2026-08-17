@@ -57,12 +57,14 @@ public:
         //     Render();
         // }
 
-        ImGui::DragFloat3("Position", Math::ValuePointer(scene_.spheres.at(0).position), 0.1f);
+        ImGui::DragFloat3("Position", Math::ValuePointer(scene_.spheres.at(0).position), 0.01f);
         ImGui::DragFloat("Radius", &scene_.spheres.at(0).radius, 0.1f);
-        ImGui::Text("Sphere Colors:");
-        ImGui::SliderFloat("Red", &scene_.spheres.at(0).albedo.r, 0.0f, 1.0f);
-        ImGui::SliderFloat("Green", &scene_.spheres.at(0).albedo.g, 0.0f, 1.0f);
-        ImGui::SliderFloat("Blue", &scene_.spheres.at(0).albedo.b, 0.0f, 1.0f);
+        ImGui::ColorEdit3("Albedo", Math::ValuePointer(scene_.spheres.at(0).albedo));
+
+        // ImGui::Text("Sphere Colors:");
+        // ImGui::SliderFloat("Red", &scene_.spheres.at(0).albedo.r, 0.0f, 1.0f);
+        // ImGui::SliderFloat("Green", &scene_.spheres.at(0).albedo.g, 0.0f, 1.0f);
+        // ImGui::SliderFloat("Blue", &scene_.spheres.at(0).albedo.b, 0.0f, 1.0f);
 
         ImGui::Text("Light Direction:");
         if (auto temp = renderer_.GetLightDirection().x; ImGui::SliderFloat("X", &temp, -1.0f, 1.0f))

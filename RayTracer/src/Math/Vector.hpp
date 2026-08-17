@@ -598,6 +598,9 @@ using Point3D = Vector<T, 3zu>;
 inline float *ValuePointer(Vector3D<float> &vector) { return &vector.x; }
 inline const float *ValuePointer(const Vector3D<float> &vector) { return &vector.x; }
 
+inline float *ValuePointer(Color3D<float> &color) { return &color.r; }
+inline const float *ValuePointer(const Color3D<float> &color) { return &color.r; }
+
 
 } // namespace Math
 
@@ -628,9 +631,6 @@ using Point3 = Math::Vector3D<T>;
 
 template <Math::Number T>
 using Point2 = Math::Vector2D<T>;
-
-template <Math::Number T>
-using Color = Math::Vector3D<T>;
 
 using iVector2 = Math::Vector2D<std::int32_t>;
 using iVector3 = Math::Vector3D<std::int32_t>;
