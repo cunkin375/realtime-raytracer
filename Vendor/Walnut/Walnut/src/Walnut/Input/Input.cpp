@@ -1,6 +1,7 @@
 #include "Input.h"
 
 #include "Walnut/Application.h"
+#include "Walnut/Math/Vector.hpp"
 
 #include <GLFW/glfw3.h>
 
@@ -21,6 +22,15 @@ namespace Walnut {
 	}
 
 	glm::vec2 Input::GetMousePosition()
+	{
+		GLFWwindow* windowHandle = Application::Get().GetWindowHandle();
+
+		double x, y;
+		glfwGetCursorPos(windowHandle, &x, &y);
+		return { (float)x, (float)y };
+	}
+
+	fVector2 Input::GetMousePositionCustom()
 	{
 		GLFWwindow* windowHandle = Application::Get().GetWindowHandle();
 
