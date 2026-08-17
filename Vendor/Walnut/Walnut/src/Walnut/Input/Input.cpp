@@ -30,15 +30,6 @@ namespace Walnut {
 		return { (float)x, (float)y };
 	}
 
-	fVector2 Input::GetMousePositionCustom()
-	{
-		GLFWwindow* windowHandle = Application::Get().GetWindowHandle();
-
-		double x, y;
-		glfwGetCursorPos(windowHandle, &x, &y);
-		return { (float)x, (float)y };
-	}
-
 	void Input::SetCursorMode(CursorMode mode)
 	{
 		GLFWwindow* windowHandle = Application::Get().GetWindowHandle();
