@@ -3,6 +3,7 @@
 #include <array>
 #include <cassert>
 #include <cmath>
+#include <concepts>
 #include <cstdint>
 #include <format>
 #include <immintrin.h>
@@ -241,7 +242,8 @@ struct VectorOperations
     {
         auto &self = static_cast<Derived &>(*this);
         T magnitude_squared = self.MagnitudeSquared();
-        if (magnitude_squared == static_cast<T>(0)) return self; // this prevents division by 0
+        if (magnitude_squared == static_cast<T>(0))
+            return self; // this prevents division by 0
         const T inverse_magnitude = self.InverseMagnitude();
         auto scale = [&]<std::size_t... Is>(std::index_sequence<Is...>)
         { ((self[Is] *= inverse_magnitude), ...); };
@@ -260,7 +262,8 @@ struct VectorOperations
     {
         Derived result = vector;
         T magnitude_squared = result.MagnitudeSquared();
-        if (magnitude_squared == static_cast<T>(0)) return result;
+        if (magnitude_squared == static_cast<T>(0))
+            return result;
         return result / result.Magnitude();
     }
 
@@ -315,10 +318,59 @@ struct VectorOperations
         }
     }
 
+    constexpr Derived &Clamp(const Derived &min, const Derived &max)
+    {
+        auto &self = static_cast<Derived &>(*this);
+        // fold over iterator sequence of size N and compare everything
+        // clamp to either gven min or max
+        // clang-format off
+        auto compare = [&]<std::size_t... Is>(std::index_sequence<Is...>){
+            (([&](){
+                if (self[Is] < min[Is]) 
+                {
+                    self[Is] = min[Is];
+                }
+                else if (self[Is] > max[Is]) 
+                {
+                    self[Is] = max[Is];
+                }
+            }()), ...); // call inner lambda for each argment
+        };
+        // clang-format on
+        compare(std::make_index_sequence<N>{});
+        return self;
+    }
+
+    static constexpr Derived Clamp(const Derived &given, const Derived &min, const Derived &max)
+    {
+        auto result = Derived{};
+        // fold over iterator sequence of size N and compare everything
+        // clamp to either gven min or max
+        auto compare = [&]<std::size_t... Is>(std::index_sequence<Is...>){
+            (([&](){
+                if (given[Is] < min[Is]) 
+                {
+                    result[Is] = min[Is];
+                }
+                else if (given[Is] > max[Is]) 
+                {
+                    result[Is] = max[Is];
+                }
+                else
+                {
+                    result[Is] = given[Is];
+                }
+            }()), ...); // call inner lambda for each argment
+        };
+        compare(std::make_index_sequence<N>{});
+        return result;
+    }
+
     // compares all members of a floating point vector to a threshold, in this case 1e-8
     constexpr bool HasNearZeroFloatPointPrecision()
     {
-        if (!std::is_floating_point_v<T>) return false;
+        if (!std::is_floating_point_v<T>)
+            return false;
         auto &self = static_cast<Derived &>(*this);
         auto compare_all_variables = [&]<std::size_t... Is>(std::index_sequence<Is...>)
         { return ((self[Is] < 1e-8) && ...); };
@@ -335,7 +387,17 @@ struct Vector : public VectorOperations<Vector<T, N>, T, N>
 
     constexpr Vector() = default;
 
-    constexpr Vector(T scalar) { data.fill(scalar); }
+    constexpr Vector(const T scalar) { data.fill(scalar); }
+
+    // perfect forwards constructor arguments
+    // requires there to be N arguments, matching template <Number T, std::size_t N>
+    // and for all given arguments to be convertible from Args type to Number T of vector
+    //      - this avoids implicit conversion
+    template <typename... Args>
+        requires(sizeof...(Args) == N) && (std::convertible_to<Args, T> && ...)
+    constexpr Vector(Args &&...args) : data{ std::forward<Args>(args)... }
+    {
+    }
 
     [[nodiscard]] constexpr bool IsEqual(const Vector &other) const noexcept { return data == other.data; }
 
@@ -380,7 +442,8 @@ struct Vector<T, 2zu> : public VectorOperations<Vector<T, 2zu>, T, 2zu>
     template <typename Self>
     constexpr auto &&operator[](this Self &&self, std::size_t i)
     {
-        if (i == 0) return std::forward_like<Self>(self).x;
+        if (i == 0)
+            return std::forward_like<Self>(self).x;
         return std::forward_like<Self>(self).y;
     }
 };
@@ -438,8 +501,10 @@ struct Math3D
                "Vector::RandomUnitVectorOnHemisphere requires normalized vector argument.");
         auto vector_on_unit_sphere = Derived::GenerateRandomUnitVector();
         // if we're on the same hemisphere as the normal
-        if (Derived::DotProduct(vector_on_unit_sphere, normal_vector) > 0.0) return vector_on_unit_sphere;
-        else return -vector_on_unit_sphere;
+        if (Derived::DotProduct(vector_on_unit_sphere, normal_vector) > 0.0)
+            return vector_on_unit_sphere;
+        else
+            return -vector_on_unit_sphere;
     }
 };
 
@@ -469,8 +534,10 @@ struct Vector<T, 3zu> : public VectorOperations<Vector<T, 3zu>, T, 3zu>, public 
     template <typename Self>
     constexpr auto &&operator[](this Self &&self, std::size_t i)
     {
-        if (i == 0) return std::forward_like<Self>(self).x;
-        if (i == 1) return std::forward_like<Self>(self).y;
+        if (i == 0)
+            return std::forward_like<Self>(self).x;
+        if (i == 1)
+            return std::forward_like<Self>(self).y;
         return std::forward_like<Self>(self).z;
     }
 };
@@ -500,8 +567,10 @@ struct Color<T, 3zu> : public VectorOperations<Color<T, 3zu>, T, 3zu>, public Ma
     template <typename Self>
     constexpr auto &&operator[](this Self &&self, std::size_t i)
     {
-        if (i == 0) return std::forward_like<Self>(self).r;
-        if (i == 1) return std::forward_like<Self>(self).g;
+        if (i == 0)
+            return std::forward_like<Self>(self).r;
+        if (i == 1)
+            return std::forward_like<Self>(self).g;
         return std::forward_like<Self>(self).b;
     }
 };
@@ -566,6 +635,7 @@ using dVector3 = Math::Vector3D<double>;
 
 using fVector2 = Math::Vector2D<float>;
 using fVector3 = Math::Vector3D<float>;
+using fVector4 = Math::Vector<float, 4zu>;
 
 using iPoint2 = Math::Point2D<std::int32_t>;
 using iPoint3 = Math::Point3D<std::int32_t>;
