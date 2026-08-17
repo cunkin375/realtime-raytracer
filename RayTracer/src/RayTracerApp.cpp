@@ -49,9 +49,8 @@ public:
     {
         auto timer = Walnut::Timer{};
 
-        f32 aspect_ratio = static_cast<f32>(viewport_width_) / viewport_height_;
         renderer_.OnResize(viewport_width_, viewport_height_);
-        renderer_.Render(aspect_ratio);
+        renderer_.Render();
 
         last_render_time_ = timer.ElapsedMillis();
     }

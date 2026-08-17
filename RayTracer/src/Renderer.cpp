@@ -25,31 +25,12 @@ void Renderer::OnResize(u32 width, u32 height)
 
 void Renderer::Render()
 {
+    f32 aspect_ratio = static_cast<f32>(final_image_->GetWidth()) / final_image_->GetHeight();
+
     for (auto y{ 0zu }; y < final_image_->GetHeight(); ++y)
     {
         for (auto x{ 0zu }; x < final_image_->GetWidth(); ++x)
         {
-
-            auto pixel_coordinate =
-                fVector2{ static_cast<f32>(x) / static_cast<f32>(final_image_->GetWidth()),
-                          static_cast<f32>(y) / static_cast<f32>(final_image_->GetHeight()) };
-
-            pixel_coordinate = pixel_coordinate * 2.f - 1.f;
-
-            image_data_[x + y * final_image_->GetWidth()] = PerPixel(pixel_coordinate);
-        }
-    }
-
-    final_image_->SetData(image_data_);
-}
-
-void Renderer::Render(f32 aspect_ratio)
-{
-    for (auto y{ 0zu }; y < final_image_->GetHeight(); ++y)
-    {
-        for (auto x{ 0zu }; x < final_image_->GetWidth(); ++x)
-        {
-
             auto pixel_coordinate =
                 fVector2{ static_cast<f32>(x) / static_cast<f32>(final_image_->GetWidth()),
                           static_cast<f32>(y) / static_cast<f32>(final_image_->GetHeight()) };

@@ -18,7 +18,6 @@ public:
     Renderer() = default;
 
     void Render();
-    void Render(f32 aspect_ratio);
     void OnResize(u32 width, u32 height);
 
     std::shared_ptr<Walnut::Image> GetFinalImage() const noexcept { return final_image_; }
