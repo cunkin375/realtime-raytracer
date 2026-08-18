@@ -46,11 +46,6 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
                 {
                     for (auto x{ 0zu }; x < final_image_->GetWidth(); ++x)
                     {
-                        // auto pixel_coordinate =
-                        //     fVector2{ static_cast<f32>(x) / static_cast<f32>(final_image_->GetWidth()),
-                        //               static_cast<f32>(y) / static_cast<f32>(final_image_->GetHeight()) };
-                        // pixel_coordinate = pixel_coordinate * 2.f - 1.f;
-
                         Ray ray;
                         ray.origin = ray_origin;
 
@@ -79,9 +74,9 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
 
 fVector4 Renderer::TraceRay(const Ray &ray, const Scene &scene)
 {
-    auto background = fVector4{ 0.f, 0.f, 0.f, 0.f };
+    auto background = fVector4{ 0.f, 0.f, 0.f, 1.f };
     if (scene.spheres.size() == 0)
-        return fVector4{ 0.f, 0.f, 0.f, 0.f };
+        return background;
 
     const Sphere &sphere = scene.spheres.at(0);
 
@@ -104,9 +99,16 @@ fVector4 Renderer::TraceRay(const Ray &ray, const Scene &scene)
 
     f32 t[] = { (-b - std::sqrt(discriminant)) / (2.f * a), (-b + std::sqrt(discriminant)) / (2.f * a) };
 
-    // f32 final_t = std::max(0.0f, std::min(t[0], t[1]));
+    f32 closest_t = std::min(t[0], t[1]);
 
-    fVector3 hit_position = origin + ray.direction * t[0];
+    if (closest_t < 0.0f)
+    {
+        closest_t = std::max(t[0], t[1]);
+        if (closest_t < 0.0f)
+            return background;
+    }
+
+    fVector3 hit_position = origin + ray.direction * closest_t;
     fColor normal = fVector3::Normalize(hit_position);
 
     // auto light_direction = fVector3::Normalize(fVector3{-1, -1, -1});
