@@ -27,6 +27,10 @@ enum class Direction
     Z
 };
 
+using FOV = f32;
+using NearPlane = f32;
+using FarPlane = f32;
+
 } // namespace
 
 class ExampleLayer : public Walnut::Layer
@@ -40,9 +44,10 @@ private:
     f32 last_render_time_{ 0.f };
 
 public:
-    ExampleLayer() : camera_(45.0f, 0.1f, 100.0f)
+    ExampleLayer() : camera_(FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f })
     {
         scene_.spheres.push_back({ .position{ 0.0f }, .radius = 0.5f, .albedo{ 1, 0, 1 } });
+        scene_.spheres.push_back({ .position{ 1.0f }, .radius = 0.7f, .albedo{ 1, 0, 1 } });
     }
 
     virtual void OnUpdate(f32 ts) override { camera_.OnUpdate(ts); }

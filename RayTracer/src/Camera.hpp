@@ -8,7 +8,7 @@
 class Camera
 {
 public:
-    Camera(f32 verticalFOV, f32 nearClip, f32 farClip);
+    Camera(f32 vertical_fov, f32 near_plane, f32 far_plane);
 
     bool OnUpdate(f32 ts);
     void OnResize(u32 width, u32 height);
