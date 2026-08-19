@@ -1,5 +1,7 @@
 #include "imgui.h"
 
+#include <ranges>
+
 #include "Math/Vector.hpp"
 
 #include "Camera.hpp"
@@ -46,8 +48,8 @@ private:
 public:
     ExampleLayer() : camera_(FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f })
     {
-        scene_.spheres.push_back({ .position{ 0.0f }, .radius = 0.7f, .albedo{ 1, 0, 0 } });
-        scene_.spheres.push_back({ .position{ 0.0f, 0.0f, -3.0f }, .radius = 0.5f, .albedo{ 1, 0, 1 } });
+        scene_.spheres.push_back({ .position{ 0.0f, 0.0f, -3.0f }, .radius = 1.1f, .albedo{ 1, 0, 0 } });
+        scene_.spheres.push_back({ .position{ 0.0f }, .radius = 0.5f, .albedo{ 1, 0, 1 } });
     }
 
     virtual void OnUpdate(f32 ts) override { camera_.OnUpdate(ts); }
@@ -57,19 +59,20 @@ public:
         ImGui::Begin("Settings");
         ImGui::Text("Last Render: %.3fms", last_render_time_);
 
-        // if (ImGui::Button("Render"))
-        // {
-        //     Render();
-        // }
+        for (auto [id, sphere] : scene_.spheres | std::views::enumerate)
+        {
+            ImGui::PushID(id);
 
-        ImGui::DragFloat3("Position", Math::ValuePointer(scene_.spheres.at(0).position), 0.01f);
-        ImGui::DragFloat("Radius", &scene_.spheres.at(0).radius, 0.1f);
-        ImGui::ColorEdit3("Albedo", Math::ValuePointer(scene_.spheres.at(0).albedo));
+            ImGui::DragFloat3("Position", Math::ValuePointer(sphere.position), 0.01f);
+            ImGui::DragFloat("Radius", &sphere.radius, 0.1f);
+            ImGui::ColorEdit3("Albedo", Math::ValuePointer(sphere.albedo));
 
-        // ImGui::Text("Sphere Colors:");
-        // ImGui::SliderFloat("Red", &scene_.spheres.at(0).albedo.r, 0.0f, 1.0f);
-        // ImGui::SliderFloat("Green", &scene_.spheres.at(0).albedo.g, 0.0f, 1.0f);
-        // ImGui::SliderFloat("Blue", &scene_.spheres.at(0).albedo.b, 0.0f, 1.0f);
+            ImGui::Dummy(ImVec2{ 0.f, 10.f });
+            ImGui::Separator();
+            ImGui::Dummy(ImVec2{ 0.f, 10.f });
+
+            ImGui::PopID();
+        }
 
         ImGui::Text("Light Direction:");
         if (auto temp = renderer_.GetLightDirection().x; ImGui::SliderFloat("X", &temp, -1.0f, 1.0f))
