@@ -1,5 +1,8 @@
 #include "Renderer.hpp"
 
+#include <limits>
+#include <ranges>
+
 #include "RayTracing/ImageColor.hpp"
 #include "RayTracing/Ray.hpp"
 
@@ -10,8 +13,10 @@
 
 Renderer::Renderer()
 {
+#if MULTI_THREAD
     thread_count_ = std::thread::hardware_concurrency();
     threads_.reserve(thread_count_);
+#endif // MULTI_THREAD
 }
 
 void Renderer::OnResize(u32 width, u32 height)
@@ -33,10 +38,10 @@ void Renderer::OnResize(u32 width, u32 height)
 
 void Renderer::Render(const Camera &camera, const Scene &scene)
 {
-    // thread safe
-    const auto &position = camera.GetPosition();
-    const fVector3 ray_origin = { position.x, position.y, position.z };
+    active_scene_ = &scene;
+    active_camera_ = &camera;
 
+#if MULTI_THREAD
     for (auto thread{ 0zu }; thread < thread_count_; ++thread)
     {
         threads_.emplace_back(
@@ -46,42 +51,67 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
                 {
                     for (auto x{ 0zu }; x < final_image_->GetWidth(); ++x)
                     {
-                        Ray ray;
-                        ray.origin = ray_origin;
-
-                        const glm::vec3 &cached_direction =
-                            camera.GetRayDirections()[x + y * final_image_->GetWidth()];
-
-                        ray.direction =
-                            fVector3{ cached_direction.x, cached_direction.y, cached_direction.z };
-
-                        fVector4 pixel_color = TraceRay(ray, scene);
+                        fVector4 pixel_color = RayGen(x, y);
                         pixel_color.Clamp(fVector4{ 0.0f }, fVector4{ 1.0f });
-
                         image_data_[x + y * final_image_->GetWidth()] =
                             ImageColor::ConvertToRGBA(pixel_color);
                     }
                 }
             });
     }
-
+    // threads must join before uploading to vulkan buffer
     threads_.clear();
+#endif
+
+#ifndef MULTI_THREAD
+    for (auto y{ 0zu }; y < final_image_->GetHeight(); ++y)
+    {
+        for (auto x{ 0zu }; x < final_image_->GetWidth(); ++x)
+        {
+            fVector4 pixel_color = RayGen(x, y);
+            pixel_color.Clamp(fVector4{ 0.0f }, fVector4{ 1.0f });
+            image_data_[x + y * final_image_->GetWidth()] = ImageColor::ConvertToRGBA(pixel_color);
+        }
+    }
+#endif
 
     final_image_->SetData(image_data_);
 }
 
 // Private Methods
 
-fVector4 Renderer::TraceRay(const Ray &ray, const Scene &scene)
+// NOTE: When transferring to Vulkan, GL_LaunchID will refer coordinates of a pixel
+fVector4 Renderer::RayGen(u32 x, u32 y)
 {
     auto background = fVector4{ 0.f, 0.f, 0.f, 1.f };
-    if (scene.spheres.size() == 0)
+    const auto &position = active_camera_->GetPosition();
+    const auto &cached_direction = active_camera_->GetRayDirections()[x + y * final_image_->GetWidth()];
+
+    Ray ray;
+    ray.origin = fVector3{ position.x, position.y, position.z };
+    ray.direction = fVector3{ cached_direction.x, cached_direction.y, cached_direction.z };
+
+    auto hit_record = TraceRay(ray);
+    if (hit_record.hit_distance < 0.f)
         return background;
 
-    const Sphere *closest_sphere = nullptr;
+    fVector3 light_direction_normal = fVector3::Normalize(light_direction_);
+    f32 light_intensity =
+        std::max(fVector3::DotProduct(hit_record.world_normal, -light_direction_normal), 0.f);
+
+    const auto &closest_sphere = active_scene_->spheres[hit_record.object_index];
+
+    auto sphere_color = closest_sphere.albedo * light_intensity;
+
+    return fVector4{ sphere_color.r, sphere_color.g, sphere_color.b, 1.f };
+}
+
+Renderer::HitRecord Renderer::TraceRay(const Ray &ray)
+{
+    i32 closest_sphere_index = -1;
     f32 hit_distance = std::numeric_limits<f32>::max();
 
-    for (const Sphere &sphere : scene.spheres)
+    for (auto [index, sphere] : active_scene_->spheres | std::views::enumerate)
     {
         fVector3 origin = ray.origin - sphere.position;
 
@@ -101,24 +131,33 @@ fVector4 Renderer::TraceRay(const Ray &ray, const Scene &scene)
         if (closest_t < hit_distance)
         {
             hit_distance = closest_t;
-            closest_sphere = &sphere;
+            closest_sphere_index = static_cast<i32>(index);
         }
     }
 
-    if (closest_sphere == nullptr)
-        return background;
+    if (closest_sphere_index == -1)
+    {
+        return Miss(ray);
+    }
 
-    fVector3 origin = ray.origin - closest_sphere->position;
-    fVector3 hit_position = origin + ray.direction * hit_distance;
-    fColor normal = fVector3::Normalize(hit_position);
-
-    // auto light_direction = fVector3::Normalize(fVector3{-1, -1, -1});
-
-    auto light_direction = fVector3::Normalize(light_direction_);
-
-    f32 intensity = std::max(fVector3::DotProduct(normal, -light_direction), 0.0f);
-
-    auto sphere_color = closest_sphere->albedo * intensity;
-
-    return fVector4{ sphere_color.r, sphere_color.g, sphere_color.b, 1.0f };
+    return ClosestHit(ray, hit_distance, closest_sphere_index);
 }
+
+Renderer::HitRecord Renderer::ClosestHit(const Ray &ray, f32 hit_distance, i32 object_index)
+{
+    auto hit_record = Renderer::HitRecord{ .hit_distance = hit_distance, .object_index = object_index };
+    const auto &closest_sphere = active_scene_->spheres.at(object_index);
+
+    fVector3 origin = ray.origin - closest_sphere.position;
+    hit_record.world_position = origin + ray.direction * hit_distance;
+    hit_record.world_normal = fVector3::Normalize(hit_record.world_position);
+
+    hit_record.world_position += closest_sphere.position;
+    return hit_record;
+}
+
+Renderer::HitRecord Renderer::Miss(const Ray &ray) { return { .hit_distance = -1 }; }
+
+// TODO: come back to these
+// Renderer::HitRecord Renderer::AnyHit(const Ray &ray, f32 hit_distance, u32 object_index) {}
+// Renderer::HitRecord Renderer::Intersection(const Ray &ray, f32 hit_distance, u32 object_index) {}

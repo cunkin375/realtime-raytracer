@@ -22,6 +22,18 @@ private:
     fVector3 light_direction_{ -1, -1, -1 };
     u32 thread_count_{ 0 };
 
+    const Scene *active_scene_{};
+    const Camera *active_camera_{};
+
+private:
+    struct HitRecord
+    {
+        fVector3 world_position;
+        fVector3 world_normal;
+        f32 hit_distance;
+        i32 object_index;
+    };
+
 public:
     Renderer();
 
@@ -37,5 +49,14 @@ public:
     void SetZ(f32 in_val) { light_direction_.z = in_val; }
 
 private:
-    fVector4 TraceRay(const Ray &ray, const Scene &scene);
+    // NOTE: All of these function resemble shaders in a Vulkan ray tracing pipeline
+    fVector4 RayGen(u32 x, u32 y);
+
+    HitRecord TraceRay(const Ray &ray);
+    HitRecord ClosestHit(const Ray &ray, f32 hit_distance, i32 object_index);
+    HitRecord Miss(const Ray &ray);
+
+    // TODO: come back to these
+    HitRecord AnyHit(const Ray &ray, f32 hit_distance, u32 object_index);
+    HitRecord Intersection(const Ray &ray, f32 hit_distance, i32 object_index);
 };
