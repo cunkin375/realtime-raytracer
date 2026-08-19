@@ -46,8 +46,8 @@ private:
 public:
     ExampleLayer() : camera_(FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f })
     {
-        scene_.spheres.push_back({ .position{ 0.0f }, .radius = 0.5f, .albedo{ 1, 0, 1 } });
-        scene_.spheres.push_back({ .position{ 1.0f }, .radius = 0.7f, .albedo{ 1, 0, 1 } });
+        scene_.spheres.push_back({ .position{ 0.0f }, .radius = 0.7f, .albedo{ 1, 0, 0 } });
+        scene_.spheres.push_back({ .position{ 0.0f, 0.0f, -3.0f }, .radius = 0.5f, .albedo{ 1, 0, 1 } });
     }
 
     virtual void OnUpdate(f32 ts) override { camera_.OnUpdate(ts); }

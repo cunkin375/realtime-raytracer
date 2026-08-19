@@ -78,37 +78,38 @@ fVector4 Renderer::TraceRay(const Ray &ray, const Scene &scene)
     if (scene.spheres.size() == 0)
         return background;
 
-    const Sphere &sphere = scene.spheres.at(0);
+    const Sphere *closest_sphere = nullptr;
+    f32 hit_distance = std::numeric_limits<f32>::max();
 
-    fVector3 origin = ray.origin - sphere.position;
-
-    f32 a = ray.direction.DotProduct(ray.direction);
-    f32 b = 2.f * origin.DotProduct(ray.direction);
-    f32 c = origin.MagnitudeSquared() - sphere.radius * sphere.radius;
-
-    f32 discriminant = b * b - 4.f * a * c;
-
-    if (discriminant < 0.0f)
+    for (const Sphere &sphere : scene.spheres)
     {
-        // This currently does not work as intended
-        // u32 color = Math::Rand::GenerateRandomNumber<u32>();
-        // return fVector4{ static_cast<f32>(color & 0xFF), static_cast<f32>((color >> 8) & 0xFF),
-        //                  static_cast<f32>((color >> 16) & 0xFF), 255.f };
+        fVector3 origin = ray.origin - sphere.position;
+
+        f32 a = ray.direction.DotProduct(ray.direction);
+        f32 b = 2.f * origin.DotProduct(ray.direction);
+        f32 c = origin.MagnitudeSquared() - sphere.radius * sphere.radius;
+
+        f32 discriminant = b * b - 4.f * a * c;
+
+        if (discriminant < 0.0f)
+            continue;
+
+        f32 t[] = { (-b - std::sqrt(discriminant)) / (2.f * a), (-b + std::sqrt(discriminant)) / (2.f * a) };
+
+        f32 closest_t = std::min(t[0], t[1]);
+
+        if (closest_t < hit_distance)
+        {
+            hit_distance = closest_t;
+            closest_sphere = &sphere;
+        }
+    }
+
+    if (closest_sphere == nullptr)
         return background;
-    }
 
-    f32 t[] = { (-b - std::sqrt(discriminant)) / (2.f * a), (-b + std::sqrt(discriminant)) / (2.f * a) };
-
-    f32 closest_t = std::min(t[0], t[1]);
-
-    if (closest_t < 0.0f)
-    {
-        closest_t = std::max(t[0], t[1]);
-        if (closest_t < 0.0f)
-            return background;
-    }
-
-    fVector3 hit_position = origin + ray.direction * closest_t;
+    fVector3 origin = ray.origin - closest_sphere->position;
+    fVector3 hit_position = origin + ray.direction * hit_distance;
     fColor normal = fVector3::Normalize(hit_position);
 
     // auto light_direction = fVector3::Normalize(fVector3{-1, -1, -1});
@@ -117,7 +118,7 @@ fVector4 Renderer::TraceRay(const Ray &ray, const Scene &scene)
 
     f32 intensity = std::max(fVector3::DotProduct(normal, -light_direction), 0.0f);
 
-    auto sphere_color = sphere.albedo * intensity;
+    auto sphere_color = closest_sphere->albedo * intensity;
 
     return fVector4{ sphere_color.r, sphere_color.g, sphere_color.b, 1.0f };
 }
