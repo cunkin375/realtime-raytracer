@@ -83,27 +83,45 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
 // NOTE: When transferring to Vulkan, GL_LaunchID will refer coordinates of a pixel
 fVector4 Renderer::RayGen(u32 x, u32 y)
 {
-    auto background = fVector4{ 0.f, 0.f, 0.f, 1.f };
     const auto &position = active_camera_->GetPosition();
-    const auto &cached_direction = active_camera_->GetRayDirections()[x + y * final_image_->GetWidth()];
+    const auto &cached_direction = active_camera_->GetRayDirections().at(x + y * final_image_->GetWidth());
 
     Ray ray;
     ray.origin = fVector3{ position.x, position.y, position.z };
     ray.direction = fVector3{ cached_direction.x, cached_direction.y, cached_direction.z };
 
-    auto hit_record = TraceRay(ray);
-    if (hit_record.hit_distance < 0.f)
-        return background;
+    auto color = fColor{ 0 };
 
-    fVector3 light_direction_normal = fVector3::Normalize(light_direction_);
-    f32 light_intensity =
-        std::max(fVector3::DotProduct(hit_record.world_normal, -light_direction_normal), 0.f);
+    f32 multiplier = 1.f;
 
-    const auto &closest_sphere = active_scene_->spheres[hit_record.object_index];
+    auto bounces{ 2zu };
+    for (auto i{ 0zu }; i < bounces; ++i)
+    {
+        auto hit_record = TraceRay(ray);
+        if (hit_record.hit_distance < 0.f)
+        {
+            auto background = fVector3{ 0.f, 0.f, 0.f };
+            color += background * multiplier;
+            break;
+        }
 
-    auto sphere_color = closest_sphere.albedo * light_intensity;
+        fVector3 light_direction_normal = fVector3::Normalize(light_direction_);
+        f32 light_intensity =
+            std::max(fVector3::DotProduct(hit_record.world_normal, -light_direction_normal), 0.f); // behaves like a cos function
 
-    return fVector4{ sphere_color.r, sphere_color.g, sphere_color.b, 1.f };
+        const auto &closest_sphere = active_scene_->spheres[hit_record.object_index];
+
+        auto sphere_color = closest_sphere.albedo * light_intensity;
+        color += sphere_color * multiplier;
+
+        multiplier *= 0.7f;
+
+        // ray is moved slightly outward to avoid being initiated from inside a surface
+        ray.origin = hit_record.world_position + hit_record.world_normal * 0.0001f;
+        ray.direction = fVector3::ReflectFromSurfaceNormal(ray.direction, hit_record.world_normal);
+    }
+
+    return fVector4{ color.r, color.g, color.b, 1.f };
 }
 
 Renderer::HitRecord Renderer::TraceRay(const Ray &ray)
@@ -128,7 +146,7 @@ Renderer::HitRecord Renderer::TraceRay(const Ray &ray)
 
         f32 closest_t = std::min(t[0], t[1]);
 
-        if (closest_t < hit_distance)
+        if (closest_t > 0.0f && closest_t < hit_distance)
         {
             hit_distance = closest_t;
             closest_sphere_index = static_cast<i32>(index);
@@ -136,9 +154,7 @@ Renderer::HitRecord Renderer::TraceRay(const Ray &ray)
     }
 
     if (closest_sphere_index == -1)
-    {
         return Miss(ray);
-    }
 
     return ClosestHit(ray, hit_distance, closest_sphere_index);
 }

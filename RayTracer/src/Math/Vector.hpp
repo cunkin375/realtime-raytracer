@@ -8,6 +8,7 @@
 #include <format>
 #include <immintrin.h>
 #include <utility>
+#include <iostream>
 
 #include "Numbers.hpp"
 #include "Random.hpp"
@@ -478,7 +479,7 @@ struct Math3D
     static constexpr Derived ReflectFromSurfaceNormal(const Derived &incoming_vector,
                                                       const Derived &surface_unit_vector)
     {
-        assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) < 1e-5 &&
+        assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) <= 1e-5 &&
                "Vector::Reflect requires normalized surface_unit_vector argument.");
         return incoming_vector -
                2 * Derived::DotProduct(incoming_vector, surface_unit_vector) * surface_unit_vector;

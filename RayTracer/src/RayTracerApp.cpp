@@ -142,7 +142,6 @@ private:
     }
 
     void AddSphere() { scene_.spheres.push_back({ .position{ 0.0f }, .radius = 0.5f, .albedo{ 1, 0, 1 } }); }
-
 };
 
 Walnut::Application *Walnut::CreateApplication(int argc, char **argv)

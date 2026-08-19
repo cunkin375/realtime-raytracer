@@ -9,7 +9,7 @@ target_compile_options(RayTracer PRIVATE
 )
 
 target_compile_definitions(RayTracer PRIVATE
-    $<$<CONFIG:Release>:MULTI_THREAD>
+    MULTI_THREAD
 )
 
 target_include_directories(RayTracer PRIVATE
