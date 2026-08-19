@@ -35,7 +35,7 @@ using FarPlane = f32;
 
 } // namespace
 
-class ExampleLayer : public Walnut::Layer
+class RayTracerLayer : public Walnut::Layer
 {
 private:
     Renderer renderer_{};
@@ -46,7 +46,7 @@ private:
     f32 last_render_time_{ 0.f };
 
 public:
-    ExampleLayer() : camera_(FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f })
+    RayTracerLayer() : camera_(FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f })
     {
         scene_.spheres.push_back({ .position{ 0.0f, 0.0f, -3.0f }, .radius = 1.1f, .albedo{ 1, 0, 0 } });
         scene_.spheres.push_back({ .position{ 0.0f }, .radius = 0.5f, .albedo{ 1, 0, 1 } });
@@ -56,8 +56,19 @@ public:
 
     virtual void OnUIRender() override
     {
+        ImGui::Dummy(ImVec2{ 0.f, 10.f });
+
         ImGui::Begin("Settings");
         ImGui::Text("Last Render: %.3fms", last_render_time_);
+
+        if (ImGui::Button("Add Sphere"))
+        {
+            AddSphere();
+        }
+
+        ImGui::Dummy(ImVec2{ 0.f, 10.f });
+        ImGui::Separator();
+        ImGui::Dummy(ImVec2{ 0.f, 10.f });
 
         for (auto [id, sphere] : scene_.spheres | std::views::enumerate)
         {
@@ -129,6 +140,9 @@ private:
             case Direction::Z: renderer_.SetZ(new_value); break;
         }
     }
+
+    void AddSphere() { scene_.spheres.push_back({ .position{ 0.0f }, .radius = 0.5f, .albedo{ 1, 0, 1 } }); }
+
 };
 
 Walnut::Application *Walnut::CreateApplication(int argc, char **argv)
@@ -137,7 +151,7 @@ Walnut::Application *Walnut::CreateApplication(int argc, char **argv)
     spec.Name = "Realtime Ray Tracer";
 
     Walnut::Application *app = new Walnut::Application(spec);
-    app->PushLayer<ExampleLayer>();
+    app->PushLayer<RayTracerLayer>();
     app->SetMenubarCallback(
         [app]()
         {
