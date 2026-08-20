@@ -1,5 +1,9 @@
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <thread>
+#include <vector>
+
 #include "Math/Random.hpp"
 
 using Rand = Math::Random;
@@ -125,4 +129,86 @@ TEST(Random, ParameterlessFloatReturnsWithinZeroOne)
         ASSERT_GE(value, 0.0f) << "Iteration " << i;
         ASSERT_LE(value, 1.0f) << "Iteration " << i;
     }
+}
+
+// -- Thread-local generator isolation ----------------------------------------
+
+TEST(Random, ThreadLocalGeneratorIndependentAcrossThreads)
+{
+    // Each thread generates values independently; if generator_ were a shared
+    // (non-thread-local) static there would be a data race and this test would
+    // crash or produce wrong results under sanitisers.
+    constexpr int num_threads = 8;
+    constexpr int iterations  = 10'000;
+
+    std::vector<std::thread> threads;
+    std::atomic<int> failures{ 0 };
+
+    for (int t = 0; t < num_threads; ++t)
+    {
+        threads.emplace_back([&failures]()
+        {
+            for (int i = 0; i < iterations; ++i)
+            {
+                float value = Rand::GenerateRandomNormalizedNumber<float>();
+                if (value < 0.0f || value > 1.0f)
+                    ++failures;
+            }
+        });
+    }
+
+    for (auto& thread : threads)
+        thread.join();
+
+    EXPECT_EQ(failures.load(), 0)
+        << "One or more threads produced out-of-range values; "
+           "thread-local generator may not be isolated correctly.";
+}
+
+TEST(Random, ThreadLocalDistributionProducesDistinctSequences)
+{
+    // Verifies that each thread gets its own distribution state, not a shared one.
+    // When distributions were `inline static` (shared), all threads using the same
+    // default-seeded thread_local generator would read/write the same distribution
+    // cache, causing them to produce identical (or corrupted) sequences.
+    constexpr int num_threads = 8;
+    constexpr int samples_per_thread = 100;
+
+    // Each thread collects its own sequence of random floats
+    std::vector<std::vector<float>> per_thread_values(num_threads);
+    for (auto &v : per_thread_values)
+        v.resize(samples_per_thread);
+
+    std::vector<std::thread> threads;
+    for (int t = 0; t < num_threads; ++t)
+    {
+        threads.emplace_back([&per_thread_values, t]()
+        {
+            for (int i = 0; i < samples_per_thread; ++i)
+            {
+                per_thread_values[t][i] = Rand::GenerateRandomNumber<float>(-0.5f, 0.5f);
+            }
+        });
+    }
+
+    for (auto &thread : threads)
+        thread.join();
+
+    // Count how many thread pairs have completely identical sequences.
+    // With correct thread_local distributions, sequences should differ.
+    int identical_pairs = 0;
+    for (int a = 0; a < num_threads; ++a)
+    {
+        for (int b = a + 1; b < num_threads; ++b)
+        {
+            if (per_thread_values[a] == per_thread_values[b])
+                ++identical_pairs;
+        }
+    }
+
+    // With independent RNGs, the probability of two 100-sample float sequences
+    // being identical is effectively zero. Allow 0 identical pairs.
+    EXPECT_EQ(identical_pairs, 0)
+        << "Multiple threads produced identical random sequences; "
+           "distribution state is likely shared instead of thread-local.";
 }
