@@ -50,9 +50,11 @@ private:
 public:
     RayTracerLayer() : camera_(FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f })
     {
-        scene_.spheres.push_back(
-            { .position{ 0.f, -101.f, 0.f }, .radius = 100.f, .material{ .albedo{ 1, 0, 0 } } });
-        scene_.spheres.push_back({ .position{ 0.f }, .radius = 1.0f, .material{ .albedo{ 1, 0, 1 } } });
+        scene_.materials.push_back({ .albedo{ 1.f, 0.f, 1.f }, .roughness = 0.15f });
+        scene_.materials.push_back({ .albedo{ 0.f, 0.1f, 0.9f }, .roughness = 0.05f });
+
+        scene_.spheres.push_back({ .position{ 0.f, -101.f, 0.f }, .radius = 100.f, .material_index = 0 });
+        scene_.spheres.push_back({ .position{ 0.f }, .radius = 1.0f, .material_index = 1 });
     }
 
     virtual void OnUpdate(f32 ts) override { camera_.OnUpdate(ts); }
@@ -77,11 +79,21 @@ public:
 
             ImGui::DragFloat3("Position", Math::ValuePointer(sphere.position), 0.01f);
             ImGui::DragFloat("Radius", &sphere.radius, 0.1f);
-            ImGui::ColorEdit3("Albedo", Math::ValuePointer(sphere.material.albedo));
-            ImGui::DragFloat("Roughness", &sphere.material.roughness, 0.01f);
-            ImGui::DragFloat("Metallic", &sphere.material.metallic, 0.01f);
+            ImGui::DragInt("Material", &sphere.material_index, 1, 0,
+                           static_cast<int>(scene_.materials.size() - 1));
 
             MyGui::Padding(ImVec2{ 0.f, 10.f });
+
+            ImGui::PopID();
+        }
+
+        for (auto [id, material] : scene_.materials | std::views::enumerate)
+        {
+            ImGui::PushID(id);
+
+            ImGui::ColorEdit3("Albedo", Math::ValuePointer(material.albedo));
+            ImGui::DragFloat("Roughness", &material.roughness, 0.01f, 0.f, 1.f);
+            ImGui::DragFloat("Metallic", &material.metallic, 0.01f, 0.f, 1.f);
 
             ImGui::PopID();
         }
@@ -142,10 +154,7 @@ private:
         }
     }
 
-    void AddSphere()
-    {
-        scene_.spheres.push_back({ .position{ 0.f }, .radius = 1.0f, .material{ .albedo{ 1, 0, 1 } } });
-    }
+    void AddSphere() { scene_.spheres.push_back({ .position{ 0.f }, .radius = 1.0f, .material_index = 0 }); }
 };
 
 Walnut::Application *Walnut::CreateApplication(int argc, char **argv)

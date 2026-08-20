@@ -16,10 +16,11 @@ struct Sphere
 {
     fVector3 position{ 0.f, 0.f, 0.f };
     f32 radius = 0.5f;
-    Material material;
+    i32 material_index{ 0 }; // ImGui works with ints
 };
 
 struct Scene
 {
     std::vector<Sphere> spheres;
+    std::vector<Material> materials;
 };

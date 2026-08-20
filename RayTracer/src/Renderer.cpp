@@ -100,7 +100,7 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         auto hit_record = TraceRay(ray);
         if (hit_record.hit_distance < 0.f)
         {
-            auto background = fVector3{ 0.f, 0.f, 0.f };
+            auto background = fVector3{ 0.6f, 0.7f, 0.9f };
             color += background * multiplier;
             break;
         }
@@ -110,9 +110,11 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         f32 light_intensity =
             std::max(fVector3::DotProduct(hit_record.world_normal, -light_direction_normal), 0.f);
 
-        const auto &closest_sphere = active_scene_->spheres[hit_record.object_index];
+        // grab the sphere and its material
+        const auto &closest_sphere = active_scene_->spheres.at(hit_record.object_index);
+        const auto &material = active_scene_->materials.at(closest_sphere.material_index);
 
-        auto sphere_color = closest_sphere.material.albedo * light_intensity;
+        auto sphere_color = material.albedo * light_intensity;
         color += sphere_color * multiplier;
 
         multiplier *= 0.7f;
@@ -120,8 +122,8 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         // ray is moved slightly outward to avoid being initiated from inside a surface
         ray.origin = hit_record.world_position + hit_record.world_normal * 0.0001f;
         ray.direction = fVector3::ReflectFromSurface(
-            ray.direction, hit_record.world_normal + closest_sphere.material.roughness *
-                                                         fVector3::GenerateRandomVector(-0.5f, 0.5f));
+            ray.direction,
+            hit_record.world_normal + material.roughness * fVector3::GenerateRandomVector(-0.5f, 0.5f));
     }
 
     return fVector4{ color.r, color.g, color.b, 1.f };
