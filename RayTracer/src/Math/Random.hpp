@@ -10,8 +10,6 @@ namespace Math
 
 class Random
 {
-private:
-    inline static std::mt19937 generator_;
     inline static std::uniform_int_distribution<std::mt19937::result_type> int_distribution_;
     inline static std::uniform_real_distribution<float> float_distribution_{ 0.0f, 1.0f };
     inline static std::uniform_real_distribution<double> double_distribution_{ 0.0, 1.0 };
@@ -24,16 +22,16 @@ public:
         if constexpr (std::integral<T>)
         {
             std::uniform_int_distribution<T> distribution{ min, max };
-            return distribution(generator_);
+            return distribution(Generator());
         }
         else if constexpr (std::same_as<T, float>)
         {
             // Map [0, 1] to [min, max]
-            return min + float_distribution_(generator_) * (max - min);
+            return min + float_distribution_(Generator()) * (max - min);
         }
         else
         {
-            return static_cast<T>(min + double_distribution_(generator_) * (max - min));
+            return static_cast<T>(min + double_distribution_(Generator()) * (max - min));
         }
     }
 
@@ -43,15 +41,15 @@ public:
     {
         if constexpr (std::integral<T>)
         {
-            return int_distribution_(generator_);
+            return int_distribution_(Generator());
         }
         else if constexpr (std::same_as<T, float>)
         {
-            return float_distribution_(generator_);
+            return float_distribution_(Generator());
         }
         else
         {
-            return static_cast<T>(double_distribution_(generator_));
+            return static_cast<T>(double_distribution_(Generator()));
         }
     }
 
@@ -65,12 +63,19 @@ public:
         }
         else if constexpr (std::same_as<T, float>)
         {
-            return float_distribution_(generator_);
+            return float_distribution_(Generator());
         }
         else
         {
-            return static_cast<T>(double_distribution_(generator_));
+            return static_cast<T>(double_distribution_(Generator()));
         }
+    }
+
+private:
+    static std::mt19937 &Generator()
+    {
+        thread_local std::mt19937 generator;
+        return generator;
     }
 };
 
