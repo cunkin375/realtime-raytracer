@@ -8,7 +8,6 @@
 #include <format>
 #include <immintrin.h>
 #include <utility>
-#include <iostream>
 
 #include "Numbers.hpp"
 #include "Random.hpp"
@@ -480,9 +479,16 @@ struct Math3D
                                                       const Derived &surface_unit_vector)
     {
         assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) <= 1e-5 &&
-               "Vector::Reflect requires normalized surface_unit_vector argument.");
+               "Vector::ReflectFromSurfaceNormal requires normalized surface_unit_vector argument.");
         return incoming_vector -
                2 * Derived::DotProduct(incoming_vector, surface_unit_vector) * surface_unit_vector;
+    }
+
+    static constexpr Derived ReflectFromSurface(const Derived &incoming_vector,
+                                                const Derived &surface_normal_vector)
+    {
+        return incoming_vector -
+               2 * Derived::DotProduct(incoming_vector, surface_normal_vector) * surface_normal_vector;
     }
 
     static constexpr Derived RefractFromSurfaceNormal(const Derived &uv_vector,
@@ -490,12 +496,24 @@ struct Math3D
                                                       double etai_over_etat)
     {
         assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) < 1e-5 &&
-               "Vector::Refract requires normalized surface_unit_vector argument.");
+               "Vector::RefractFromSurfaceNormal requires normalized surface_unit_vector argument.");
         auto cosine_theta = std::fmin(Derived::DotProduct(-uv_vector, surface_unit_vector), 1.0);
         auto refracted_out_perpendicular = etai_over_etat * (uv_vector + cosine_theta * surface_unit_vector);
         auto refracted_out_parallel =
             -std::sqrt(std::fabs(1.0f - refracted_out_perpendicular.MagnitudeSquared())) *
             surface_unit_vector;
+        return refracted_out_perpendicular + refracted_out_parallel;
+    }
+
+    static constexpr Derived RefractFromSurface(const Derived &uv_vector,
+                                                const Derived &surface_normal_vector, double etai_over_etat)
+    {
+        auto cosine_theta = std::fmin(Derived::DotProduct(-uv_vector, surface_normal_vector), 1.0);
+        auto refracted_out_perpendicular =
+            etai_over_etat * (uv_vector + cosine_theta * surface_normal_vector);
+        auto refracted_out_parallel =
+            -std::sqrt(std::fabs(1.0f - refracted_out_perpendicular.MagnitudeSquared())) *
+            surface_normal_vector;
         return refracted_out_perpendicular + refracted_out_parallel;
     }
 
@@ -601,7 +619,6 @@ inline const float *ValuePointer(const Vector3D<float> &vector) { return &vector
 
 inline float *ValuePointer(Color3D<float> &color) { return &color.r; }
 inline const float *ValuePointer(const Color3D<float> &color) { return &color.r; }
-
 
 } // namespace Math
 
