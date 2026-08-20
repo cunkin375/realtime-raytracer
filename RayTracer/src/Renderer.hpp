@@ -32,6 +32,10 @@ private:
 
 private:
     std::vector<std::jthread> threads_{};
+
+    std::vector<u32> image_horizontal_iterator_;
+    std::vector<u32> image_vertical_iterator_;
+
     std::shared_ptr<Walnut::Image> final_image_{};
 
     Settings settings_;
