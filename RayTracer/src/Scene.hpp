@@ -23,4 +23,5 @@ struct Scene
 {
     std::vector<Sphere> spheres;
     std::vector<Material> materials;
+    fVector3 light_direction{ -1, -1, -1 };
 };
