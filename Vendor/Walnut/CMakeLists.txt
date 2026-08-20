@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 4.1.0)
 project(Walnut)
 
-set(CMAKE_CXX_STANDARD 26)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 if (NOT IS_DIRECTORY $ENV{VULKAN_SDK})

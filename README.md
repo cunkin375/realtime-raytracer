@@ -2,7 +2,7 @@
 <img width="1791" height="834" alt="image" src="https://github.com/user-attachments/assets/fcb78453-edee-42b7-a6d5-34e9a025326e" />
 
 ### Requirements
-- RayTracer uses C++26 GCC experimental features
+- RayTracer uses C++23
 - GoogleTest is cloned automatically when building
 
 ### Getting Started

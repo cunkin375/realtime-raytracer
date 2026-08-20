@@ -29,3 +29,4 @@ AGENTS.md
 build_ninja
 build_vs
 CMakeSettings.json
+RayTracer/diagnostics
