@@ -106,19 +106,22 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         }
 
         fVector3 light_direction_normal = fVector3::Normalize(light_direction_);
+        // behaves like a cos function
         f32 light_intensity =
-            std::max(fVector3::DotProduct(hit_record.world_normal, -light_direction_normal), 0.f); // behaves like a cos function
+            std::max(fVector3::DotProduct(hit_record.world_normal, -light_direction_normal), 0.f);
 
         const auto &closest_sphere = active_scene_->spheres[hit_record.object_index];
 
-        auto sphere_color = closest_sphere.albedo * light_intensity;
+        auto sphere_color = closest_sphere.material.albedo * light_intensity;
         color += sphere_color * multiplier;
 
         multiplier *= 0.7f;
 
         // ray is moved slightly outward to avoid being initiated from inside a surface
         ray.origin = hit_record.world_position + hit_record.world_normal * 0.0001f;
-        ray.direction = fVector3::ReflectFromSurfaceNormal(ray.direction, hit_record.world_normal);
+        ray.direction = fVector3::ReflectFromSurface(
+            ray.direction, hit_record.world_normal + closest_sphere.material.roughness *
+                                                         fVector3::GenerateRandomVector(-0.5f, 0.5f));
     }
 
     return fVector4{ color.r, color.g, color.b, 1.f };

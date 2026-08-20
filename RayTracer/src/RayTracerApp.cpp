@@ -48,8 +48,9 @@ private:
 public:
     RayTracerLayer() : camera_(FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f })
     {
-        scene_.spheres.push_back({ .position{ 0.0f, 0.0f, -3.0f }, .radius = 1.1f, .albedo{ 1, 0, 0 } });
-        scene_.spheres.push_back({ .position{ 0.0f }, .radius = 0.5f, .albedo{ 1, 0, 1 } });
+        scene_.spheres.push_back(
+            { .position{ 0.f, -101.f, 0.f }, .radius = 100.f, .material{ .albedo{ 1, 0, 0 } } });
+        scene_.spheres.push_back({ .position{ 0.f }, .radius = 1.0f, .material{ .albedo{ 1, 0, 1 } } });
     }
 
     virtual void OnUpdate(f32 ts) override { camera_.OnUpdate(ts); }
@@ -76,7 +77,9 @@ public:
 
             ImGui::DragFloat3("Position", Math::ValuePointer(sphere.position), 0.01f);
             ImGui::DragFloat("Radius", &sphere.radius, 0.1f);
-            ImGui::ColorEdit3("Albedo", Math::ValuePointer(sphere.albedo));
+            ImGui::ColorEdit3("Albedo", Math::ValuePointer(sphere.material.albedo));
+            ImGui::DragFloat("Roughness", &sphere.material.roughness, 0.1f);
+            ImGui::DragFloat("Metallic", &sphere.material.metallic, 0.1f);
 
             ImGui::Dummy(ImVec2{ 0.f, 10.f });
             ImGui::Separator();
@@ -86,15 +89,15 @@ public:
         }
 
         ImGui::Text("Light Direction:");
-        if (auto temp = renderer_.GetLightDirection().x; ImGui::SliderFloat("X", &temp, -1.0f, 1.0f))
+        if (auto temp = renderer_.GetLightDirection().x; ImGui::SliderFloat("X", &temp, -1.f, 1.f))
         {
             UpdateLightDirection(temp, Direction::X);
         }
-        if (auto temp = renderer_.GetLightDirection().y; ImGui::SliderFloat("Y", &temp, -1.0f, 1.0f))
+        if (auto temp = renderer_.GetLightDirection().y; ImGui::SliderFloat("Y", &temp, -1.f, 1.f))
         {
             UpdateLightDirection(temp, Direction::Y);
         }
-        if (auto temp = renderer_.GetLightDirection().z; ImGui::SliderFloat("Z", &temp, -1.0f, 1.0f))
+        if (auto temp = renderer_.GetLightDirection().z; ImGui::SliderFloat("Z", &temp, -1.f, 1.f))
         {
             UpdateLightDirection(temp, Direction::Z);
         }
@@ -141,7 +144,10 @@ private:
         }
     }
 
-    void AddSphere() { scene_.spheres.push_back({ .position{ 0.0f }, .radius = 0.5f, .albedo{ 1, 0, 1 } }); }
+    void AddSphere()
+    {
+        scene_.spheres.push_back({ .position{ 0.f }, .radius = 1.0f, .material{ .albedo{ 1, 0, 1 } } });
+    }
 };
 
 Walnut::Application *Walnut::CreateApplication(int argc, char **argv)
