@@ -26,3 +26,6 @@ image2.ppm
 .~lock.image.ppm#
 RayTracer/bugs
 AGENTS.md
+build_ninja
+build_vs
+CMakeSettings.json
