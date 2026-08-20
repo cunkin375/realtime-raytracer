@@ -8,8 +8,12 @@
 struct Material
 {
     fVector3 albedo{ 1.f };
+    fVector3 emission_color{ 0.f };
     f32 roughness{ 1.f };
     f32 metallic{ 0.f };
+    f32 emission_power{ 0.f };
+
+    fVector3 GetEmmission() const { return emission_color * emission_power; }
 };
 
 struct Sphere
