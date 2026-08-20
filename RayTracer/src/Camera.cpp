@@ -16,7 +16,7 @@ Camera::Camera(f32 verticalFOV, f32 nearClip, f32 farClip)
     position_ = glm::vec3(0, 0, 6);
 }
 
-bool Camera::OnUpdate(f32 ts)
+bool Camera::OnUpdate(f32 timestamp)
 {
     glm::vec2 mousePos = Input::GetMousePosition();
     glm::vec2 delta = (mousePos - last_mouse_position_) * 0.002f;
@@ -40,32 +40,32 @@ bool Camera::OnUpdate(f32 ts)
     // Movement
     if (Input::IsKeyDown(KeyCode::W))
     {
-        position_ += forward_direction_ * speed * ts;
+        position_ += forward_direction_ * speed * timestamp;
         moved = true;
     }
     else if (Input::IsKeyDown(KeyCode::S))
     {
-        position_ -= forward_direction_ * speed * ts;
+        position_ -= forward_direction_ * speed * timestamp;
         moved = true;
     }
     if (Input::IsKeyDown(KeyCode::A))
     {
-        position_ -= rightDirection * speed * ts;
+        position_ -= rightDirection * speed * timestamp;
         moved = true;
     }
     else if (Input::IsKeyDown(KeyCode::D))
     {
-        position_ += rightDirection * speed * ts;
+        position_ += rightDirection * speed * timestamp;
         moved = true;
     }
     if (Input::IsKeyDown(KeyCode::Q))
     {
-        position_ -= upDirection * speed * ts;
+        position_ -= upDirection * speed * timestamp;
         moved = true;
     }
     else if (Input::IsKeyDown(KeyCode::E))
     {
-        position_ += upDirection * speed * ts;
+        position_ += upDirection * speed * timestamp;
         moved = true;
     }
 
