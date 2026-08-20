@@ -15,15 +15,11 @@
 
 class Renderer
 {
-private:
-    std::vector<std::jthread> threads_{};
-    std::shared_ptr<Walnut::Image> final_image_{};
-    u32 *image_data_ = nullptr;
-    fVector3 light_direction_{ -1, -1, -1 };
-    u32 thread_count_{ 0 };
-
-    const Scene *active_scene_{};
-    const Camera *active_camera_{};
+public:
+    struct Settings
+    {
+        bool accumulate{ true };
+    };
 
 private:
     struct HitRecord
@@ -34,6 +30,22 @@ private:
         i32 object_index;
     };
 
+private:
+    std::vector<std::jthread> threads_{};
+    std::shared_ptr<Walnut::Image> final_image_{};
+
+    Settings settings_;
+
+    u32 *image_data_{ nullptr };
+    fVector4 *accumulation_data_{ nullptr };
+
+    const Scene *active_scene_{ nullptr };
+    const Camera *active_camera_{ nullptr };
+
+    u32 thread_count_{ 0 };
+
+    u32 frame_index_{ 1 };
+
 public:
     Renderer();
 
@@ -42,11 +54,9 @@ public:
 
     std::shared_ptr<Walnut::Image> GetFinalImage() const noexcept { return final_image_; }
 
-    const fVector3 &GetLightDirection() const noexcept { return light_direction_; }
+    void ResetFrameIndex() { frame_index_ = 1; }
 
-    void SetX(f32 in_val) { light_direction_.x = in_val; }
-    void SetY(f32 in_val) { light_direction_.y = in_val; }
-    void SetZ(f32 in_val) { light_direction_.z = in_val; }
+    Settings &GetSettings() { return settings_; }
 
 private:
     // NOTE: All of these function resemble shaders in a Vulkan ray tracing pipeline

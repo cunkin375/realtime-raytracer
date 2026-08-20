@@ -3,6 +3,8 @@
 #include <limits>
 #include <ranges>
 
+#include <cstring>
+
 #include "RayTracing/ImageColor.hpp"
 #include "RayTracing/Ray.hpp"
 
@@ -34,12 +36,19 @@ void Renderer::OnResize(u32 width, u32 height)
 
     delete[] image_data_;
     image_data_ = new u32[width * height];
+
+    delete[] accumulation_data_;
+    accumulation_data_ = new fVector4[width * height];
 }
 
 void Renderer::Render(const Camera &camera, const Scene &scene)
 {
     active_scene_ = &scene;
     active_camera_ = &camera;
+
+    if (frame_index_ == 1)
+        std::memset(accumulation_data_, 0,
+                    final_image_->GetWidth() * final_image_->GetHeight() * sizeof(fVector4));
 
 #if MULTI_THREAD
     for (auto thread{ 0zu }; thread < thread_count_; ++thread)
@@ -52,9 +61,14 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
                     for (auto x{ 0zu }; x < final_image_->GetWidth(); ++x)
                     {
                         fVector4 pixel_color = RayGen(x, y);
-                        pixel_color.Clamp(fVector4{ 0.0f }, fVector4{ 1.0f });
+                        accumulation_data_[x + y * final_image_->GetWidth()] += pixel_color;
+
+                        fVector4 accumulated_color = accumulation_data_[x + y * final_image_->GetWidth()];
+                        accumulated_color /= static_cast<f32>(frame_index_);
+
+                        accumulated_color.Clamp(fVector4{ 0.0f }, fVector4{ 1.0f });
                         image_data_[x + y * final_image_->GetWidth()] =
-                            ImageColor::ConvertToRGBA(pixel_color);
+                            ImageColor::ConvertToRGBA(accumulated_color);
                     }
                 }
             });
@@ -69,6 +83,11 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
         for (auto x{ 0zu }; x < final_image_->GetWidth(); ++x)
         {
             fVector4 pixel_color = RayGen(x, y);
+            accumulation_data_[x + y * final_image_->GetWidth()] += pixel_color;
+
+            fVector4 accumulated_color = accumulation_data_[x + y * final_image_->GetWidth()];
+            accumulated_color /= static_cast<f32>(frame_index_);
+
             pixel_color.Clamp(fVector4{ 0.0f }, fVector4{ 1.0f });
             image_data_[x + y * final_image_->GetWidth()] = ImageColor::ConvertToRGBA(pixel_color);
         }
@@ -76,6 +95,11 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
 #endif
 
     final_image_->SetData(image_data_);
+
+    if (settings_.accumulate)
+        frame_index_++;
+    else
+        frame_index_ = 1;
 }
 
 // Private Methods
@@ -105,7 +129,7 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
             break;
         }
 
-        fVector3 light_direction_normal = fVector3::Normalize(light_direction_);
+        fVector3 light_direction_normal = fVector3::Normalize(active_scene_->light_direction);
         // behaves like a cos function
         f32 light_intensity =
             std::max(fVector3::DotProduct(hit_record.world_normal, -light_direction_normal), 0.f);
