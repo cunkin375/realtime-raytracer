@@ -1,5 +1,6 @@
 #include "imgui.h"
 
+#include <limits>
 #include <ranges>
 
 #include "Camera.hpp"
@@ -50,11 +51,23 @@ private:
 public:
     RayTracerLayer() : camera_(FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f })
     {
-        scene_.materials.push_back({ .albedo{ 1.f, 0.f, 1.f }, .roughness = 0.15f });
-        scene_.materials.push_back({ .albedo{ 1.f, 1.0f, 0.0f }, .roughness = 0.05f });
+        auto &pink_sphere = scene_.materials.emplace_back();
+        pink_sphere.albedo = fVector3{ 1.f, 0.f, 1.f };
+        pink_sphere.roughness = 0.15f;
+
+        auto &blue_sphere = scene_.materials.emplace_back();
+        blue_sphere.albedo = fVector3{ 1.f, 1.0f, 0.0f };
+        blue_sphere.roughness = 0.05f;
+
+        auto &orange_light = scene_.materials.emplace_back();
+        orange_light.albedo = { 0.8f, 0.5f, 0.2f };
+        orange_light.roughness = 0.05f;
+        orange_light.emission_color = orange_light.albedo;
+        orange_light.emission_power = 2.f;
 
         scene_.spheres.push_back({ .position{ 0.f, -101.f, 0.f }, .radius = 100.f, .material_index = 0 });
         scene_.spheres.push_back({ .position{ 0.f }, .radius = 1.0f, .material_index = 1 });
+        scene_.spheres.push_back({ .position{ 3.f, 0.f, 0.f }, .radius = 1.0f, .material_index = 2 });
     }
 
     virtual void OnUpdate(f32 timestamp) override
@@ -80,7 +93,7 @@ public:
 
         MyGui::Padding(ImVec2{ 0.f, 10.f });
 
-        // Spheres
+        ImGui::Text("Spheres:");
         for (auto [id, sphere] : scene_.spheres | std::views::enumerate)
         {
             ImGui::PushID(id);
@@ -98,14 +111,17 @@ public:
             ImGui::PopID();
         }
 
-        // Materials
+        ImGui::Text("Materials:");
         for (auto [id, material] : scene_.materials | std::views::enumerate)
         {
             ImGui::PushID(id);
 
             if (ImGui::ColorEdit3("Albedo", Math::ValuePointer(material.albedo))
                 || ImGui::DragFloat("Roughness", &material.roughness, 0.01f, 0.f, 1.f)
-                || ImGui::DragFloat("Metallic", &material.metallic, 0.01f, 0.f, 1.f))
+                || ImGui::DragFloat("Metallic", &material.metallic, 0.01f, 0.f, 1.f)
+                || ImGui::ColorEdit3("Emission Color", Math::ValuePointer(material.emission_color))
+                || ImGui::DragFloat("Emission Power", &material.emission_power, 0.01f, 0.f,
+                                    std::numeric_limits<f32>::max()))
             {
                 reset_frame_index = true;
             }
@@ -113,9 +129,12 @@ public:
             ImGui::PopID();
         }
 
-        MyGui::Padding(ImVec2{ 0.f, 10.f });
-        if (ImGui::DragFloat3("Light Direction", Math::ValuePointer(scene_.light_direction), 0.01f, -1.f, 1.f))
-            reset_frame_index = true;
+        // MyGui::Padding(ImVec2{ 0.f, 10.f });
+        // if (ImGui::DragFloat3("Light Direction", Math::ValuePointer(scene_.light_direction), 0.01f, -1.f,
+        //                       1.f))
+        // {
+        //     reset_frame_index = true;
+        // }
 
         ImGui::End(); // Scene
 

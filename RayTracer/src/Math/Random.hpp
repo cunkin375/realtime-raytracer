@@ -10,6 +10,11 @@ namespace Math
 
 class Random
 {
+    static std::mt19937 &Generator()
+    {
+        thread_local std::mt19937 generator{ std::random_device{}() };
+        return generator;
+    }
     inline static std::uniform_int_distribution<std::mt19937::result_type> int_distribution_;
     inline static std::uniform_real_distribution<float> float_distribution_{ 0.0f, 1.0f };
     inline static std::uniform_real_distribution<double> double_distribution_{ 0.0, 1.0 };
@@ -55,7 +60,7 @@ public:
 
     /* Generates a random number between 0 and 1 */
     template <Number T>
-    static T GenerateRandomNormalizedNumber()
+    static T GenerateRandomUnitNumber()
     {
         if constexpr (std::integral<T>)
         {
@@ -69,13 +74,6 @@ public:
         {
             return static_cast<T>(double_distribution_(Generator()));
         }
-    }
-
-private:
-    static std::mt19937 &Generator()
-    {
-        thread_local std::mt19937 generator;
-        return generator;
     }
 };
 

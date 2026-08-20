@@ -300,7 +300,12 @@ struct VectorOperations
         auto new_vector = Derived{};
         auto fill_vector = [&]<std::size_t... Is>(std::index_sequence<Is...>)
         { ((new_vector[Is] = Rand::GenerateRandomNumber<T>(min, max)), ...); };
-        fill_vector(std::make_index_sequence<N>{});
+        auto fill_normal_vector = [&]<std::size_t... Is>(std::index_sequence<Is...>)
+        { ((new_vector[Is] = Rand::GenerateRandomUnitNumber<T>()), ...); };
+        if (min == static_cast<T>(-1) && max == static_cast<T>(1))
+            fill_normal_vector(std::make_index_sequence<N>{});
+        else
+            fill_vector(std::make_index_sequence<N>{});
         return new_vector;
     }
 
@@ -478,30 +483,30 @@ struct Math3D
     static constexpr Derived ReflectFromSurfaceNormal(const Derived &incoming_vector,
                                                       const Derived &surface_unit_vector)
     {
-        assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) <= 1e-5 &&
-               "Vector::ReflectFromSurfaceNormal requires normalized surface_unit_vector argument.");
-        return incoming_vector -
-               2 * Derived::DotProduct(incoming_vector, surface_unit_vector) * surface_unit_vector;
+        assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) <= 1e-5
+               && "Vector::ReflectFromSurfaceNormal requires normalized surface_unit_vector argument.");
+        return incoming_vector
+               - 2 * Derived::DotProduct(incoming_vector, surface_unit_vector) * surface_unit_vector;
     }
 
     static constexpr Derived ReflectFromSurface(const Derived &incoming_vector,
                                                 const Derived &surface_normal_vector)
     {
-        return incoming_vector -
-               2 * Derived::DotProduct(incoming_vector, surface_normal_vector) * surface_normal_vector;
+        return incoming_vector
+               - 2 * Derived::DotProduct(incoming_vector, surface_normal_vector) * surface_normal_vector;
     }
 
     static constexpr Derived RefractFromSurfaceNormal(const Derived &uv_vector,
                                                       const Derived &surface_unit_vector,
                                                       double etai_over_etat)
     {
-        assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) < 1e-5 &&
-               "Vector::RefractFromSurfaceNormal requires normalized surface_unit_vector argument.");
+        assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) < 1e-5
+               && "Vector::RefractFromSurfaceNormal requires normalized surface_unit_vector argument.");
         auto cosine_theta = std::fmin(Derived::DotProduct(-uv_vector, surface_unit_vector), 1.0);
         auto refracted_out_perpendicular = etai_over_etat * (uv_vector + cosine_theta * surface_unit_vector);
         auto refracted_out_parallel =
-            -std::sqrt(std::fabs(1.0f - refracted_out_perpendicular.MagnitudeSquared())) *
-            surface_unit_vector;
+            -std::sqrt(std::fabs(1.0f - refracted_out_perpendicular.MagnitudeSquared()))
+            * surface_unit_vector;
         return refracted_out_perpendicular + refracted_out_parallel;
     }
 
@@ -512,16 +517,16 @@ struct Math3D
         auto refracted_out_perpendicular =
             etai_over_etat * (uv_vector + cosine_theta * surface_normal_vector);
         auto refracted_out_parallel =
-            -std::sqrt(std::fabs(1.0f - refracted_out_perpendicular.MagnitudeSquared())) *
-            surface_normal_vector;
+            -std::sqrt(std::fabs(1.0f - refracted_out_perpendicular.MagnitudeSquared()))
+            * surface_normal_vector;
         return refracted_out_perpendicular + refracted_out_parallel;
     }
 
     static constexpr Derived RandomUnitVectorOnHemisphere(const Derived &normal_vector)
     {
         // NOTE: this should change once std::sqrt() is constexpr
-        assert(std::abs(normal_vector.MagnitudeSquared() - static_cast<T>(1)) < 1e-5 &&
-               "Vector::RandomUnitVectorOnHemisphere requires normalized vector argument.");
+        assert(std::abs(normal_vector.MagnitudeSquared() - static_cast<T>(1)) < 1e-5
+               && "Vector::RandomUnitVectorOnHemisphere requires normalized vector argument.");
         auto vector_on_unit_sphere = Derived::GenerateRandomUnitVector();
         // if we're on the same hemisphere as the normal
         if (Derived::DotProduct(vector_on_unit_sphere, normal_vector) > 0.0)

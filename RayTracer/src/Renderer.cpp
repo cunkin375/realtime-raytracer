@@ -1,14 +1,12 @@
 #include "Renderer.hpp"
 
+#include <cstring>
 #include <limits>
 #include <ranges>
 
-#include <cstring>
-
+#include "Math/Vector.hpp"
 #include "RayTracing/ImageColor.hpp"
 #include "RayTracing/Ray.hpp"
-
-#include "Math/Vector.hpp"
 #include "Util/Aliases.hpp"
 
 // Public Methods
@@ -33,6 +31,8 @@ void Renderer::OnResize(u32 width, u32 height)
     {
         final_image_ = std::make_shared<Walnut::Image>(width, height, Walnut::ImageFormat::RGBA);
     }
+
+    ResetFrameIndex();
 
     delete[] image_data_;
     image_data_ = new u32[width * height];
@@ -75,9 +75,7 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
     }
     // threads must join before uploading to vulkan buffer
     threads_.clear();
-#endif
-
-#ifndef MULTI_THREAD
+#else
     for (auto y{ 0zu }; y < final_image_->GetHeight(); ++y)
     {
         for (auto x{ 0zu }; x < final_image_->GetWidth(); ++x)
@@ -138,16 +136,19 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         const auto &closest_sphere = active_scene_->spheres.at(hit_record.object_index);
         const auto &material = active_scene_->materials.at(closest_sphere.material_index);
 
-        auto sphere_color = material.albedo * light_intensity;
+        auto sphere_color = material.albedo /* * light_intensity */;
         color += sphere_color * multiplier;
 
         multiplier *= 0.7f;
 
         // ray is moved slightly outward to avoid being initiated from inside a surface
         ray.origin = hit_record.world_position + hit_record.world_normal * 0.0001f;
-        ray.direction = fVector3::ReflectFromSurface(
-            ray.direction,
-            hit_record.world_normal + material.roughness * fVector3::GenerateRandomVector(-0.5f, 0.5f));
+
+        // ray.direction = fVector3::ReflectFromSurface(
+        //     ray.direction,
+        //     hit_record.world_normal + material.roughness * fVector3::GenerateRandomVector(-0.5f, 0.5f));
+
+        ray.direction = fVector3::RandomUnitVectorOnHemisphere(fVector3::Normalize(hit_record.world_normal));
     }
 
     return fVector4{ color.r, color.g, color.b, 1.f };

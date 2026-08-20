@@ -29,7 +29,7 @@ dRay Camera::GetRay(std::size_t i, std::size_t j) const
         pixel_00_location_ + ((i + offset.x) * pixel_delta_u_) + ((j + offset.y) * pixel_delta_v_);
     auto ray_origin = (defocus_angle <= 0) ? camera_center_ : DefocusDiskSample();
     auto ray_direction = pixel_sample - ray_origin;
-    auto ray_time = Math::Rand::GenerateRandomNormalizedNumber<f64>();
+    auto ray_time = Math::Rand::GenerateRandomUnitNumber<f64>();
     return dRay{ ray_origin, ray_direction, ray_time };
 }
 
@@ -42,8 +42,8 @@ dPoint3 Camera::DefocusDiskSample() const
 dVector3 Camera::SampleSquare() const
 {
     using namespace Math;
-    return dVector3{ Rand::GenerateRandomNormalizedNumber<f64>() - 0.5,
-                     Rand::GenerateRandomNormalizedNumber<f64>() - 0.5, 0 };
+    return dVector3{ Rand::GenerateRandomUnitNumber<f64>() - 0.5,
+                     Rand::GenerateRandomUnitNumber<f64>() - 0.5, 0 };
 }
 
 void Camera::InitializePass()
