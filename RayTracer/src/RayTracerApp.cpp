@@ -2,10 +2,12 @@
 
 #include <ranges>
 
-#include "Math/Vector.hpp"
-
 #include "Camera.hpp"
 #include "Renderer.hpp"
+
+#include "MyGui/Wrappers.hpp"
+
+#include "Math/Vector.hpp"
 
 #include "Walnut/Application.h"
 #include "Walnut/EntryPoint.h"
@@ -67,9 +69,7 @@ public:
             AddSphere();
         }
 
-        ImGui::Dummy(ImVec2{ 0.f, 10.f });
-        ImGui::Separator();
-        ImGui::Dummy(ImVec2{ 0.f, 10.f });
+        MyGui::Padding(ImVec2{ 0.f, 10.f });
 
         for (auto [id, sphere] : scene_.spheres | std::views::enumerate)
         {
@@ -78,12 +78,10 @@ public:
             ImGui::DragFloat3("Position", Math::ValuePointer(sphere.position), 0.01f);
             ImGui::DragFloat("Radius", &sphere.radius, 0.1f);
             ImGui::ColorEdit3("Albedo", Math::ValuePointer(sphere.material.albedo));
-            ImGui::DragFloat("Roughness", &sphere.material.roughness, 0.1f);
-            ImGui::DragFloat("Metallic", &sphere.material.metallic, 0.1f);
+            ImGui::DragFloat("Roughness", &sphere.material.roughness, 0.01f);
+            ImGui::DragFloat("Metallic", &sphere.material.metallic, 0.01f);
 
-            ImGui::Dummy(ImVec2{ 0.f, 10.f });
-            ImGui::Separator();
-            ImGui::Dummy(ImVec2{ 0.f, 10.f });
+            MyGui::Padding(ImVec2{ 0.f, 10.f });
 
             ImGui::PopID();
         }

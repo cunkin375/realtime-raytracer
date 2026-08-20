@@ -36,4 +36,12 @@ inline bool DragFloat3Alias(const char *label, float values[3], const char *alia
 
     return changed;
 }
+
+inline void Padding(ImVec2 size)
+{
+    ImGui::Dummy(size);
+    ImGui::Separator();
+    ImGui::Dummy(size);
+}
+
 } // namespace MyGui
