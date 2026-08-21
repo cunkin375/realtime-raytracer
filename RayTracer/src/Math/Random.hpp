@@ -10,11 +10,6 @@ namespace Math
 
 class Random
 {
-    static std::mt19937 &Generator()
-    {
-        thread_local std::mt19937 generator{ std::random_device{}() };
-        return generator;
-    }
     inline static std::uniform_int_distribution<std::mt19937::result_type> int_distribution_;
     inline static std::uniform_real_distribution<float> float_distribution_{ 0.0f, 1.0f };
     inline static std::uniform_real_distribution<double> double_distribution_{ 0.0, 1.0 };
@@ -95,6 +90,15 @@ public:
         {
             return static_cast<T>(double_normal_distribution_(Generator()));
         }
+    }
+
+private:
+    // generator is not its own member variable here because this approach allows code to be compiled by GCC
+    // and MSVC while keeping the generator thread_local
+    static std::mt19937 &Generator()
+    {
+        thread_local std::mt19937 generator{ std::random_device{}() };
+        return generator;
     }
 };
 
