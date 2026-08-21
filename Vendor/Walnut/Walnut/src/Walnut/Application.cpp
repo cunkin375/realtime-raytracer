@@ -408,6 +408,9 @@ namespace Walnut {
 	{
 		// Setup GLFW window
 		glfwSetErrorCallback(glfw_error_callback);
+#if defined(__linux__)
+		glfwInitHint(GLFW_PLATFORM, GLFW_PLATFORM_X11);
+#endif
 		if (!glfwInit())
 		{
 			std::cerr << "Could not initalize GLFW!\n";
