@@ -131,9 +131,8 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         auto hit_record = TraceRay(ray);
         if (hit_record.hit_distance < 0.f)
         {
-            // NOTE: the background contributes to color to light
-            [[maybe_unused]] auto background = fVector3{ 0.5f, 0.5f, 0.5f };
-            // light += background * color_contribution;
+            // NOTE: background contributes to rendered light
+            light += active_scene_->background * color_contribution;
             break;
         }
 
@@ -184,7 +183,7 @@ Renderer::HitRecord Renderer::TraceRay(const Ray &ray)
 
         f32 discriminant = b * b - 4.f * a * c;
 
-        if (discriminant < 0.0f)
+        if (discriminant < 0.f)
             continue;
 
         f32 t[] = { (-b - std::sqrt(discriminant)) / (2.f * a), (-b + std::sqrt(discriminant)) / (2.f * a) };

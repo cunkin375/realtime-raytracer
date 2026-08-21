@@ -91,6 +91,11 @@ public:
 
         MyGui::Padding(ImVec2{ 0.f, 10.f });
 
+        if (ImGui::ColorEdit3("Background", Math::ValuePointer(scene_.background)))
+            reset_frame_index = true;
+
+        MyGui::Padding(ImVec2{ 0.f, 10.f });
+
         ImGui::Text("Spheres:");
         for (auto [id, sphere] : scene_.spheres | std::views::enumerate)
         {

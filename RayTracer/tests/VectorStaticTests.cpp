@@ -84,10 +84,3 @@ static_assert(negate_me.x == -1.0f && negate_me.y == -2.0f && negate_me.z == -3.
 static_assert(expected.x == -1.0f && expected.y == -2.0f && expected.z == -3.0f);
 static_assert(negate_me == expected);
 
-// TODO: look into this later
-consteval bool FloatErrorWithinMargins(const fVector3 right_float_vector, const fVector3 left_float_vector)
-{
-    return true;
-}
-
-static_assert(FloatErrorWithinMargins(fVector3{ 1.0f, 2.5f, 1.2f }, fVector3{ 1.4f, 2.6f, 1.0f }));
