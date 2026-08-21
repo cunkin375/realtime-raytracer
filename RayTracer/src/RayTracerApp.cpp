@@ -155,9 +155,12 @@ public:
 
         ImGui::Begin("Settings");
         ImGui::Text("Last Render: %.3fms", last_render_time_);
+
         ImGui::Checkbox("Accumulate", &renderer_.GetSettings().accumulate);
+        ImGui::Checkbox("Fast Random", &renderer_.GetSettings().fast_random);
         if (ImGui::Button("Reset"))
             renderer_.ResetFrameIndex();
+
         ImGui::End(); // Settings
 
         // NOTE: keep UI above this code

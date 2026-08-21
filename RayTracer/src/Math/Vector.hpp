@@ -318,6 +318,20 @@ struct VectorOperations
         }
     }
 
+    // very simple rejection method, can be optimized
+    static constexpr Derived FastRandomUnitVector(std::uint32_t seed)
+    {
+        while (true)
+        {
+            auto candidate = GenerateRandomVector(static_cast<T>(-1), static_cast<T>(1));
+            T magnitude_squared = candidate.MagnitudeSquared();
+            if (static_cast<T>(0) < magnitude_squared && magnitude_squared <= static_cast<T>(1))
+            {
+                return candidate / std::sqrt(magnitude_squared);
+            }
+        }
+    }
+
     constexpr Derived &Clamp(const Derived &min, const Derived &max)
     {
         auto &self = static_cast<Derived &>(*this);

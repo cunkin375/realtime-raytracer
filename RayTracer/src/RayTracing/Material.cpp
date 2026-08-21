@@ -57,7 +57,7 @@ std::optional<ScatterRecord> Dielectric::Scatter(const dRay &ray_in, const HitRe
     bool cannot_refract = final_refraction_index * sin_theta > 1.0;
 
     if (cannot_refract ||
-        Reflectance(cosine_theta, final_refraction_index) > Math::Rand::GenerateRandomUnitNumber<f64>())
+        Reflectance(cosine_theta, final_refraction_index) > Math::Rand::GenerateNumberInUnitInterval<f64>())
     {
         direction = dVector3::ReflectFromSurfaceNormal(unit_direction, record.normal);
     }

@@ -19,6 +19,7 @@ public:
     struct Settings
     {
         bool accumulate{ true };
+        bool fast_random{ true };
     };
 
 private:

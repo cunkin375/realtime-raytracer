@@ -73,7 +73,7 @@ TEST(Random, FloatMinMaxCoversRange)
     EXPECT_GT(observed_max, max - 0.05f) << "Distribution does not cover upper range";
 }
 
-// -- GenerateRandomUnitNumber ------------------------------------------
+// -- GenerateNumberInUnitInterval ------------------------------------------
 
 TEST(Random, NormalizedFloatReturnsWithinZeroOne)
 {
@@ -81,7 +81,7 @@ TEST(Random, NormalizedFloatReturnsWithinZeroOne)
 
     for (int i = 0; i < iterations; ++i)
     {
-        float value = Rand::GenerateRandomUnitNumber<float>();
+        float value = Rand::GenerateNumberInUnitInterval<float>();
         ASSERT_GE(value, 0.0f) << "Iteration " << i;
         ASSERT_LE(value, 1.0f) << "Iteration " << i;
     }
@@ -93,7 +93,7 @@ TEST(Random, NormalizedDoubleReturnsWithinZeroOne)
 
     for (int i = 0; i < iterations; ++i)
     {
-        double value = Rand::GenerateRandomUnitNumber<double>();
+        double value = Rand::GenerateNumberInUnitInterval<double>();
         ASSERT_GE(value, 0.0) << "Iteration " << i;
         ASSERT_LE(value, 1.0) << "Iteration " << i;
     }
@@ -108,13 +108,85 @@ TEST(Random, NormalizedFloatCoversRange)
 
     for (int i = 0; i < iterations; ++i)
     {
-        float value = Rand::GenerateRandomUnitNumber<float>();
+        float value = Rand::GenerateNumberInUnitInterval<float>();
         observed_min = std::min(observed_min, value);
         observed_max = std::max(observed_max, value);
     }
 
     EXPECT_LT(observed_min, 0.05f) << "Distribution does not cover lower range";
     EXPECT_GT(observed_max, 0.95f) << "Distribution does not cover upper range";
+}
+
+// -- FastUnitInterval & PCG_Hash ---------------------------------------------
+
+TEST(Random, FastUnitIntervalFloatRespectsRange)
+{
+    constexpr int iterations = 10'000;
+    std::uint32_t seed = 123456789u;
+
+    for (int i = 0; i < iterations; ++i)
+    {
+        float value = Rand::FastUnitInterval<float>(seed);
+        ASSERT_GE(value, 0.0f) << "Iteration " << i;
+        ASSERT_LE(value, 1.0f) << "Iteration " << i;
+    }
+}
+
+TEST(Random, FastUnitIntervalDoubleRespectsRange)
+{
+    constexpr int iterations = 10'000;
+    std::uint32_t seed = 987654321u;
+
+    for (int i = 0; i < iterations; ++i)
+    {
+        double value = Rand::FastUnitInterval<double>(seed);
+        ASSERT_GE(value, 0.0) << "Iteration " << i;
+        ASSERT_LE(value, 1.0) << "Iteration " << i;
+    }
+}
+
+TEST(Random, FastUnitIntervalFloatCoversRange)
+{
+    constexpr int iterations = 10'000;
+    std::uint32_t seed = 42u;
+
+    float observed_min = 1.0f;
+    float observed_max = 0.0f;
+
+    for (int i = 0; i < iterations; ++i)
+    {
+        float value = Rand::FastUnitInterval<float>(seed);
+        observed_min = std::min(observed_min, value);
+        observed_max = std::max(observed_max, value);
+    }
+
+    EXPECT_LT(observed_min, 0.05f) << "Distribution does not cover lower range";
+    EXPECT_GT(observed_max, 0.95f) << "Distribution does not cover upper range";
+}
+
+TEST(Random, FastUnitIntervalFloatMeanIsUniform)
+{
+    constexpr int iterations = 100'000;
+    std::uint32_t seed = 1337u;
+
+    double sum = 0.0;
+    for (int i = 0; i < iterations; ++i)
+    {
+        sum += Rand::FastUnitInterval<float>(seed);
+    }
+
+    double mean = sum / iterations;
+    // Expected mean for uniform [0, 1] is 0.5
+    EXPECT_NEAR(mean, 0.5, 0.01) << "FastUnitInterval distribution mean deviates from uniform";
+}
+
+TEST(Random, FastUnitIntervalMutatesSeed)
+{
+    std::uint32_t initial_seed = 12345u;
+    std::uint32_t seed = initial_seed;
+
+    Rand::FastUnitInterval<float>(seed);
+    EXPECT_NE(seed, initial_seed) << "FastUnitInterval must mutate the seed passed by reference";
 }
 
 // -- GenerateRandomNumber() (no args) ---------------------------------------
@@ -150,7 +222,7 @@ TEST(Random, ThreadLocalGeneratorIndependentAcrossThreads)
         {
             for (int i = 0; i < iterations; ++i)
             {
-                float value = Rand::GenerateRandomUnitNumber<float>();
+                float value = Rand::GenerateNumberInUnitInterval<float>();
                 if (value < 0.0f || value > 1.0f)
                     ++failures;
             }

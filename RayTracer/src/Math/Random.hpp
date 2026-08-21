@@ -57,14 +57,10 @@ public:
     }
 
     /* Generates a random number between 0 and 1 */
-    template <Number T>
-    static T GenerateRandomUnitNumber()
+    template <std::floating_point T>
+    static T GenerateNumberInUnitInterval()
     {
-        if constexpr (std::integral<T>)
-        {
-            return static_cast<T>(0); // 0 or 1 is not meaningful for integers; return 0
-        }
-        else if constexpr (std::same_as<T, float>)
+        if constexpr (std::same_as<T, float>)
         {
             return float_distribution_(Generator());
         }
@@ -74,15 +70,19 @@ public:
         }
     }
 
-    /* Generates a random number between 0 and 1 */
-    template <Number T>
-    static T GenerateRandomNormalGaussian()
+    // seed is taken by reference to support multi-threaded operations
+    template <std::floating_point T>
+    static T FastUnitInterval(std::uint32_t &seed)
     {
-        if constexpr (std::integral<T>)
-        {
-            return static_cast<T>(0); // 0 or 1 is not meaningful for integers; return 0
-        }
-        else if constexpr (std::same_as<T, float>)
+        seed = PCG_Hash(seed);
+        return static_cast<T>(seed) / static_cast<T>(std::numeric_limits<std::uint32_t>::max());
+    }
+
+    /* Generates a random number between 0 and 1 */
+    template <std::floating_point T>
+    static T GenerateNumberInUnitInterval_Gauss()
+    {
+        if constexpr (std::same_as<T, float>)
         {
             return float_normal_distribution_(Generator());
         }
@@ -90,6 +90,14 @@ public:
         {
             return static_cast<T>(double_normal_distribution_(Generator()));
         }
+    }
+
+    // source: https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/
+    inline static std::uint32_t PCG_Hash(std::uint32_t input)
+    {
+        std::uint32_t state = input * 747796405u + 289133643u;
+        std::uint32_t word = ((state >> ((state >> 28u) + 4u)) ^ state) * 277803747u;
+        return (word >> 22u) ^ word;
     }
 
 private:

@@ -120,9 +120,14 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
     auto color_contribution = fVector3{ 1.f };
     // together, light and color_contribution are implemented to support shadows through difussed lighting
 
+    std::uint32_t seed = x + y * final_image_->GetWidth();
+    seed *= frame_index_;
+
     auto bounces{ 8zu };
     for (auto i{ 0zu }; i < bounces; ++i)
     {
+        seed += i;
+
         auto hit_record = TraceRay(ray);
         if (hit_record.hit_distance < 0.f)
         {
@@ -142,8 +147,23 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         // ray is moved slightly outward to avoid being initiated from inside a surface
         ray.origin = hit_record.world_position + hit_record.world_normal * 0.0001f;
 
-        ray.direction = fVector3::Normalize(hit_record.world_normal + fVector3::GenerateRandomUnitVector());
-
+        if (settings_.fast_random)
+        {
+            using namespace Math;
+            ray.direction = fVector3::Normalize(
+                hit_record.world_normal
+                + fVector3::Normalize(fVector3{ Rand::FastUnitInterval<f32>(seed) * 2.f - 1.f,
+                                                Rand::FastUnitInterval<f32>(seed) * 2.f - 1.f,
+                                                Rand::FastUnitInterval<f32>(seed) * 2.f - 1.f }));
+        }
+        else
+        {
+            // the reason this is so slow is because it seeds a new random device at every frame
+            // it was originally used before fast_random because it allowed for thread local random number
+            // generation with mersenne_twister_engine across GCC and MSVC
+            ray.direction =
+                fVector3::Normalize(hit_record.world_normal + fVector3::GenerateRandomUnitVector());
+        }
     }
 
     return fVector4{ light.r, light.g, light.b, 1.f };
