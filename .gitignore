@@ -2,6 +2,7 @@
 .vs/
 bin/
 bin-int/
+build/
 
 # Files
 *.vcxproj
@@ -10,23 +11,17 @@ bin-int/
 *.sln
 *.ps1
 *.ini
+*.md
 
 # Exclude
 !vendor/bin
 !.ignore
+!README.md
 
-# From RayTracer
-build
-vendor/googletest
-.clang-format
-.clangd
-AutoBuildAndRun.ps1
-image.ppm
-image2.ppm
-.~lock.image.ppm#
-RayTracer/bugs
-AGENTS.md
+# RayTracer Directories
+RayTracer/bugs/
+RayTracer/diagnostics/
+
 build_ninja
 build_vs
 CMakeSettings.json
-RayTracer/diagnostics

@@ -1,0 +1,10 @@
+CompileFlags:
+  CompilationDatabase: "build_ninja"
+  Remove: [-fmodule-mapper=*, -fdeps-format=*, -fmodules-ts]
+
+Diagnostics:
+  Suppress:
+    - "deduction_guide_template_not_deducible"
+
+InlayHints:
+  Enabled: No

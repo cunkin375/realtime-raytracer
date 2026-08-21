@@ -1,0 +1,17 @@
+Language: Cpp
+Cpp11BracedListStyle: false
+BasedOnStyle: LLVM
+ColumnLimit: 110
+IndentWidth: 4
+IndentAccessModifiers: false
+IndentCaseLabels: true
+TabWidth: 4
+UseTab: Never
+AccessModifierOffset: -4 # keep this equal to IndentWidth
+BreakBeforeBraces: Allman
+BreakBeforeBinaryOperators: NonAssignment
+NamespaceIndentation: Inner
+BreakTemplateDeclarations: Yes
+AllowShortCaseLabelsOnASingleLine: true
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortBlocksOnASingleLine: Empty
