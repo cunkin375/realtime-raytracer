@@ -4,6 +4,10 @@
 #include <limits>
 #include <ranges>
 
+#include <glm/geometric.hpp>
+
+#include "Walnut/Random.h"
+
 #include "Math/Vector.hpp"
 #include "RayTracing/ImageColor.hpp"
 #include "RayTracing/Ray.hpp"
@@ -118,14 +122,13 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
     auto color_contribution = fVector3{ 1.f };
     // together, light and color_contribution are implemented to support shadows through difussed lighting
 
-    auto bounces{ 2zu };
+    auto bounces{ 8zu };
     for (auto i{ 0zu }; i < bounces; ++i)
     {
         auto hit_record = TraceRay(ray);
         if (hit_record.hit_distance < 0.f)
         {
-            auto background = fVector3{ 0.6f, 0.7f, 0.9f };
-            // in this case, the background is being treaded as a light source
+            auto background = fVector3{ 0.5f, 0.5f, 0.5f };
             light += background * color_contribution;
             break;
         }
@@ -149,7 +152,14 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         //     ray.direction,
         //     hit_record.world_normal + material.roughness * fVector3::GenerateRandomVector(-0.5f, 0.5f));
 
-        ray.direction = fVector3::RandomUnitVectorOnHemisphere(fVector3::Normalize(hit_record.world_normal));
+        // ray.direction = fVector3::RandomUnitVectorOnHemisphere(fVector3::Normalize(hit_record.world_normal));
+
+        // ray.direction = fVector3::Normalize(hit_record.world_normal + fVector3::GenerateRandomUnitVector());
+
+        auto world_normal = hit_record.world_normal;
+        auto direction = glm::normalize(glm::vec3(world_normal.x, world_normal.y, world_normal.z) + Walnut::Random::InUnitSphere());
+        ray.direction = fVector3{direction.x, direction.y, direction.z };
+
     }
 
     return fVector4{ light.r, light.g, light.b, 1.f };

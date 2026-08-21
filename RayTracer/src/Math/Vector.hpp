@@ -300,12 +300,7 @@ struct VectorOperations
         auto new_vector = Derived{};
         auto fill_vector = [&]<std::size_t... Is>(std::index_sequence<Is...>)
         { ((new_vector[Is] = Rand::GenerateRandomNumber<T>(min, max)), ...); };
-        auto fill_normal_vector = [&]<std::size_t... Is>(std::index_sequence<Is...>)
-        { ((new_vector[Is] = Rand::GenerateRandomUnitNumber<T>()), ...); };
-        if (min == static_cast<T>(-1) && max == static_cast<T>(1))
-            fill_normal_vector(std::make_index_sequence<N>{});
-        else
-            fill_vector(std::make_index_sequence<N>{});
+        fill_vector(std::make_index_sequence<N>{});
         return new_vector;
     }
 
