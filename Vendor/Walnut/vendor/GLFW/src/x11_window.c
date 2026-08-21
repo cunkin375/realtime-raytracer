@@ -2680,6 +2680,10 @@ void _glfwSetWindowFloatingX11(_GLFWwindow* window, GLFWbool enabled)
     XFlush(_glfw.x11.display);
 }
 
+void _glfwSetWindowTitlebarX11(_GLFWwindow* window, GLFWbool enabled)
+{
+}
+
 void _glfwSetWindowMousePassthroughX11(_GLFWwindow* window, GLFWbool enabled)
 {
     if (!_glfw.x11.xshape.available)

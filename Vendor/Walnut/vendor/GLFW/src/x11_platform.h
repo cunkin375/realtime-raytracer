@@ -931,6 +931,7 @@ void _glfwSetWindowFloatingX11(_GLFWwindow* window, GLFWbool enabled);
 float _glfwGetWindowOpacityX11(_GLFWwindow* window);
 void _glfwSetWindowOpacityX11(_GLFWwindow* window, float opacity);
 void _glfwSetWindowMousePassthroughX11(_GLFWwindow* window, GLFWbool enabled);
+void _glfwSetWindowTitlebarX11(_GLFWwindow* window, GLFWbool enabled);
 
 void _glfwSetRawMouseMotionX11(_GLFWwindow *window, GLFWbool enabled);
 GLFWbool _glfwRawMouseMotionSupportedX11(void);
