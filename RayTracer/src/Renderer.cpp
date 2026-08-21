@@ -6,8 +6,6 @@
 
 #include <glm/geometric.hpp>
 
-#include "Walnut/Random.h"
-
 #include "Math/Vector.hpp"
 #include "RayTracing/ImageColor.hpp"
 #include "RayTracing/Ray.hpp"
@@ -128,37 +126,23 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         auto hit_record = TraceRay(ray);
         if (hit_record.hit_distance < 0.f)
         {
-            auto background = fVector3{ 0.5f, 0.5f, 0.5f };
-            light += background * color_contribution;
+            // NOTE: the background contributes to color to light
+            [[maybe_unused]] auto background = fVector3{ 0.5f, 0.5f, 0.5f };
+            // light += background * color_contribution;
             break;
         }
-
-        // fVector3 light_direction_normal = fVector3::Normalize(active_scene_->light_direction);
-        // // behaves like a cos function
-        // f32 light_intensity =
-        //     std::max(fVector3::DotProduct(hit_record.world_normal, -light_direction_normal), 0.f);
 
         // grab the sphere and its material
         const auto &closest_sphere = active_scene_->spheres.at(hit_record.object_index);
         const auto &material = active_scene_->materials.at(closest_sphere.material_index);
 
-        // light += material.albedo * color_contribution;
+        light += material.GetEmmission();
         color_contribution *= material.albedo;
 
         // ray is moved slightly outward to avoid being initiated from inside a surface
         ray.origin = hit_record.world_position + hit_record.world_normal * 0.0001f;
 
-        // ray.direction = fVector3::ReflectFromSurface(
-        //     ray.direction,
-        //     hit_record.world_normal + material.roughness * fVector3::GenerateRandomVector(-0.5f, 0.5f));
-
-        // ray.direction = fVector3::RandomUnitVectorOnHemisphere(fVector3::Normalize(hit_record.world_normal));
-
-        // ray.direction = fVector3::Normalize(hit_record.world_normal + fVector3::GenerateRandomUnitVector());
-
-        auto world_normal = hit_record.world_normal;
-        auto direction = glm::normalize(glm::vec3(world_normal.x, world_normal.y, world_normal.z) + Walnut::Random::InUnitSphere());
-        ray.direction = fVector3{direction.x, direction.y, direction.z };
+        ray.direction = fVector3::Normalize(hit_record.world_normal + fVector3::GenerateRandomUnitVector());
 
     }
 
