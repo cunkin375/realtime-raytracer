@@ -19,6 +19,9 @@ class Random
     inline static std::uniform_real_distribution<float> float_distribution_{ 0.0f, 1.0f };
     inline static std::uniform_real_distribution<double> double_distribution_{ 0.0, 1.0 };
 
+    inline static std::normal_distribution<float> float_normal_distribution_{ 0.0f, 1.0f };
+    inline static std::normal_distribution<double> double_normal_distribution_{ 0.0, 1.0 };
+
 public:
     /* Generates a random number between given min and max */
     template <Number T>
@@ -73,6 +76,24 @@ public:
         else
         {
             return static_cast<T>(double_distribution_(Generator()));
+        }
+    }
+
+    /* Generates a random number between 0 and 1 */
+    template <Number T>
+    static T GenerateRandomNormalGaussian()
+    {
+        if constexpr (std::integral<T>)
+        {
+            return static_cast<T>(0); // 0 or 1 is not meaningful for integers; return 0
+        }
+        else if constexpr (std::same_as<T, float>)
+        {
+            return float_normal_distribution_(Generator());
+        }
+        else
+        {
+            return static_cast<T>(double_normal_distribution_(Generator()));
         }
     }
 };

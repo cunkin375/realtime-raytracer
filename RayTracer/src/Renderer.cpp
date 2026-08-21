@@ -112,9 +112,11 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
     ray.origin = fVector3{ position.x, position.y, position.z };
     ray.direction = fVector3{ cached_direction.x, cached_direction.y, cached_direction.z };
 
-    auto color = fColor{ 0 };
-
-    f32 multiplier = 1.f;
+    // a ray's light starts at 0 and accumulates light from light sources
+    auto light = fColor{ 0 };
+    // it fully contributes collor across all channels, but diminishes as it hits materials that absorb color
+    auto color_contribution = fVector3{ 1.f };
+    // together, light and color_contribution are implemented to support shadows through difussed lighting
 
     auto bounces{ 2zu };
     for (auto i{ 0zu }; i < bounces; ++i)
@@ -123,23 +125,22 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         if (hit_record.hit_distance < 0.f)
         {
             auto background = fVector3{ 0.6f, 0.7f, 0.9f };
-            color += background * multiplier;
+            // in this case, the background is being treaded as a light source
+            light += background * color_contribution;
             break;
         }
 
-        fVector3 light_direction_normal = fVector3::Normalize(active_scene_->light_direction);
-        // behaves like a cos function
-        f32 light_intensity =
-            std::max(fVector3::DotProduct(hit_record.world_normal, -light_direction_normal), 0.f);
+        // fVector3 light_direction_normal = fVector3::Normalize(active_scene_->light_direction);
+        // // behaves like a cos function
+        // f32 light_intensity =
+        //     std::max(fVector3::DotProduct(hit_record.world_normal, -light_direction_normal), 0.f);
 
         // grab the sphere and its material
         const auto &closest_sphere = active_scene_->spheres.at(hit_record.object_index);
         const auto &material = active_scene_->materials.at(closest_sphere.material_index);
 
-        auto sphere_color = material.albedo /* * light_intensity */;
-        color += sphere_color * multiplier;
-
-        multiplier *= 0.7f;
+        // light += material.albedo * color_contribution;
+        color_contribution *= material.albedo;
 
         // ray is moved slightly outward to avoid being initiated from inside a surface
         ray.origin = hit_record.world_position + hit_record.world_normal * 0.0001f;
@@ -151,7 +152,7 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         ray.direction = fVector3::RandomUnitVectorOnHemisphere(fVector3::Normalize(hit_record.world_normal));
     }
 
-    return fVector4{ color.r, color.g, color.b, 1.f };
+    return fVector4{ light.r, light.g, light.b, 1.f };
 }
 
 Renderer::HitRecord Renderer::TraceRay(const Ray &ray)

@@ -83,8 +83,6 @@ public:
         ImGui::Dummy(ImVec2{ 0.f, 10.f });
 
         ImGui::Begin("Scene");
-        ImGui::Text("Last Render: %.3fms", last_render_time_);
-
         if (ImGui::Button("Add Sphere"))
         {
             AddSphere();
@@ -156,6 +154,7 @@ public:
         ImGui::PopStyleVar();
 
         ImGui::Begin("Settings");
+        ImGui::Text("Last Render: %.3fms", last_render_time_);
         ImGui::Checkbox("Accumulate", &renderer_.GetSettings().accumulate);
         if (ImGui::Button("Reset"))
             renderer_.ResetFrameIndex();
