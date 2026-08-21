@@ -8,7 +8,7 @@
 
 using Rand = Math::Random;
 
-// ── GenerateRandomNumber(min, max) ──────────────────────────────────────────
+// -- GenerateRandomNumber(min, max) ------------------------------------------
 
 TEST(Random, FloatMinMaxRespectsRange)
 {
@@ -73,7 +73,7 @@ TEST(Random, FloatMinMaxCoversRange)
     EXPECT_GT(observed_max, max - 0.05f) << "Distribution does not cover upper range";
 }
 
-// ── GenerateRandomNormalizedNumber ──────────────────────────────────────────
+// -- GenerateRandomUnitNumber ------------------------------------------
 
 TEST(Random, NormalizedFloatReturnsWithinZeroOne)
 {
@@ -81,7 +81,7 @@ TEST(Random, NormalizedFloatReturnsWithinZeroOne)
 
     for (int i = 0; i < iterations; ++i)
     {
-        float value = Rand::GenerateRandomNormalizedNumber<float>();
+        float value = Rand::GenerateRandomUnitNumber<float>();
         ASSERT_GE(value, 0.0f) << "Iteration " << i;
         ASSERT_LE(value, 1.0f) << "Iteration " << i;
     }
@@ -93,7 +93,7 @@ TEST(Random, NormalizedDoubleReturnsWithinZeroOne)
 
     for (int i = 0; i < iterations; ++i)
     {
-        double value = Rand::GenerateRandomNormalizedNumber<double>();
+        double value = Rand::GenerateRandomUnitNumber<double>();
         ASSERT_GE(value, 0.0) << "Iteration " << i;
         ASSERT_LE(value, 1.0) << "Iteration " << i;
     }
@@ -108,7 +108,7 @@ TEST(Random, NormalizedFloatCoversRange)
 
     for (int i = 0; i < iterations; ++i)
     {
-        float value = Rand::GenerateRandomNormalizedNumber<float>();
+        float value = Rand::GenerateRandomUnitNumber<float>();
         observed_min = std::min(observed_min, value);
         observed_max = std::max(observed_max, value);
     }
@@ -117,7 +117,7 @@ TEST(Random, NormalizedFloatCoversRange)
     EXPECT_GT(observed_max, 0.95f) << "Distribution does not cover upper range";
 }
 
-// ── GenerateRandomNumber() (no args) ───────────────────────────────────────
+// -- GenerateRandomNumber() (no args) ---------------------------------------
 
 TEST(Random, ParameterlessFloatReturnsWithinZeroOne)
 {
@@ -150,7 +150,7 @@ TEST(Random, ThreadLocalGeneratorIndependentAcrossThreads)
         {
             for (int i = 0; i < iterations; ++i)
             {
-                float value = Rand::GenerateRandomNormalizedNumber<float>();
+                float value = Rand::GenerateRandomUnitNumber<float>();
                 if (value < 0.0f || value > 1.0f)
                     ++failures;
             }
