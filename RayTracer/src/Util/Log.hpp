@@ -30,6 +30,13 @@ constexpr const char *GetLevel(Level level)
     }
 }
 
+inline void PrintImpl(Level Lvl, std::source_location location, std::string formatted)
+{
+    std::println("[{}] {}:{} {}", GetLevel(Lvl),
+                 std::filesystem::path{ location.file_name() }.filename().string(), location.line(),
+                 formatted);
+}
+
 // use of deduction guides limits to a struct, which is whatever
 // struct that takes in some number of arguments, configurations for levels are defined later
 template <Level Lvl, typename... Args>
@@ -38,9 +45,7 @@ struct Print
     Print(std::format_string<Args...> message, Args &&...args,
           std::source_location location = std::source_location::current())
     {
-        std::println("[{}] {}:{} {}", GetLevel(Lvl),
-                     std::filesystem::path{ location.file_name() }.filename().string(), location.line(),
-                     std::format(message, std::forward<Args>(args)...));
+        PrintImpl(Lvl, location, std::format(message, std::forward<Args>(args)...));
     }
 };
 
@@ -48,6 +53,14 @@ struct Print
 // NOTE: clang does not like this, whatever
 template <Level Lvl, typename... Args>
 Print(std::format_string<Args...>, Args &&...) -> Print<Lvl, Args...>;
+
+// free function for source_location forwarding 
+// - avoids argument template argument deduction issues with clang
+template <Level Lvl, typename... Args>
+void PrintAt(std::source_location location, std::format_string<Args...> message, Args &&...args)
+{
+    PrintImpl(Lvl, location, std::format(message, std::forward<Args>(args)...));
+}
 
 template <typename... Args>
 using Debug = Print<Level::Debug, Args...>;
