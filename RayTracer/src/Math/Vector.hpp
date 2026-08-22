@@ -264,7 +264,7 @@ struct VectorOperations
         T magnitude_squared = result.MagnitudeSquared();
         if (magnitude_squared == static_cast<T>(0))
             return result;
-        return result / result.Magnitude();
+        return result / std::sqrt(magnitude_squared);
     }
 
     constexpr T DotProduct(const Derived &vector) const
@@ -318,18 +318,16 @@ struct VectorOperations
         }
     }
 
-    // very simple rejection method, can be optimized
-    static constexpr Derived FastRandomUnitVector(std::uint32_t seed)
+    static constexpr Derived FastUnitSphereVector(std::uint32_t &seed)
     {
-        while (true)
+        static_assert(std::floating_point<T>, "FastUnitSphereVector requires a floating point vector.");
+        auto new_vector = Derived{};
+        auto fill_vector = [&]<std::size_t... Is>(std::index_sequence<Is...>)
         {
-            auto candidate = GenerateRandomVector(static_cast<T>(-1), static_cast<T>(1));
-            T magnitude_squared = candidate.MagnitudeSquared();
-            if (static_cast<T>(0) < magnitude_squared && magnitude_squared <= static_cast<T>(1))
-            {
-                return candidate / std::sqrt(magnitude_squared);
-            }
-        }
+            ((new_vector[Is] = Rand::FastUnitInterval<T>(seed) * static_cast<T>(2) - static_cast<T>(1)), ...);
+        };
+        fill_vector(std::make_index_sequence<N>{});
+        return Derived::Normalize(new_vector);
     }
 
     constexpr Derived &Clamp(const Derived &min, const Derived &max)

@@ -118,12 +118,8 @@ fVector4 CPU_Backend::RayGen(u32 x, u32 y)
 
         if (frame_.fast_random)
         {
-            using namespace Math;
-            ray.direction = fVector3::Normalize(
-                hit_record.world_normal
-                + fVector3::Normalize(fVector3{ Rand::FastUnitInterval<f32>(seed) * 2.f - 1.f,
-                                                Rand::FastUnitInterval<f32>(seed) * 2.f - 1.f,
-                                                Rand::FastUnitInterval<f32>(seed) * 2.f - 1.f }));
+            ray.direction =
+                fVector3::Normalize(hit_record.world_normal + fVector3::FastUnitSphereVector(seed));
         }
         else
         {
