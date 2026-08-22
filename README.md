@@ -3,6 +3,7 @@
 <img width="2145" height="1363" alt="image" src="https://github.com/user-attachments/assets/c62aa59a-2495-4330-8943-efa572907077" />
 
 ### Requirements
+- Vulkan SDK saved as env $VULKAN_SDK
 - RayTracer uses C++23
 - GoogleTest is cloned automatically when building
 
