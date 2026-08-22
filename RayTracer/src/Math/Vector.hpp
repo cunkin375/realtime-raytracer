@@ -487,7 +487,7 @@ struct Math3D
         return Derived{ x_param, y_param, z_param };
     }
 
-    static constexpr Derived ReflectFromSurfaceNormal(const Derived &incoming_vector,
+    static constexpr Derived ReflectFromSurfaceUnit(const Derived &incoming_vector,
                                                       const Derived &surface_unit_vector)
     {
         assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) <= 1e-5
@@ -503,7 +503,7 @@ struct Math3D
                - 2 * Derived::DotProduct(incoming_vector, surface_normal_vector) * surface_normal_vector;
     }
 
-    static constexpr Derived RefractFromSurfaceNormal(const Derived &uv_vector,
+    static constexpr Derived RefractFromSurfaceUnit(const Derived &uv_vector,
                                                       const Derived &surface_unit_vector,
                                                       double etai_over_etat)
     {

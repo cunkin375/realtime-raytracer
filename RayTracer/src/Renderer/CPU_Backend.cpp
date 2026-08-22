@@ -124,7 +124,7 @@ fVector4 CPU_Backend::RayGen(u32 x, u32 y)
 
         if (material.metallic)
         {
-            ray.direction = fVector3::ReflectFromSurfaceNormal(
+            ray.direction = fVector3::ReflectFromSurfaceUnit(
                 ray.direction, fVector3::Normalize(hit_record.world_normal
                                                    + material.roughness * random_vector(frame_.fast_random)));
         }

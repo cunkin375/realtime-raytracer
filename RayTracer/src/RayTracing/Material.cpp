@@ -38,7 +38,7 @@ std::optional<ScatterRecord> Lambertian::Scatter(const dRay &ray_in, const HitRe
 /*** Metal Material functions ***/
 std::optional<ScatterRecord> Metal::Scatter(const dRay &ray_in, const HitRecord &record) const
 {
-    auto reflected_ray = dVector3::ReflectFromSurfaceNormal(ray_in.direction, record.normal);
+    auto reflected_ray = dVector3::ReflectFromSurfaceUnit(ray_in.direction, record.normal);
     reflected_ray = dVector3::UnitVector(reflected_ray) + (fuzz_ * dVector3::GenerateRandomUnitVector());
     return ScatterRecord{ Attenuation{ albedo_ },
                           ScatteredRay{ record.end_point, reflected_ray, ray_in.time } };
@@ -59,11 +59,11 @@ std::optional<ScatterRecord> Dielectric::Scatter(const dRay &ray_in, const HitRe
     if (cannot_refract ||
         Reflectance(cosine_theta, final_refraction_index) > Math::Rand::GenerateNumberInUnitInterval<f64>())
     {
-        direction = dVector3::ReflectFromSurfaceNormal(unit_direction, record.normal);
+        direction = dVector3::ReflectFromSurfaceUnit(unit_direction, record.normal);
     }
     else
     {
-        direction = dVector3::RefractFromSurfaceNormal(unit_direction, record.normal, final_refraction_index);
+        direction = dVector3::RefractFromSurfaceUnit(unit_direction, record.normal, final_refraction_index);
     }
     return ScatterRecord{ Attenuation{ 1.0, 1.0, 1.0 },
                           ScatteredRay{ record.end_point, direction, ray_in.time } };
