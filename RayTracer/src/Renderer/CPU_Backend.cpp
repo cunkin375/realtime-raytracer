@@ -19,9 +19,10 @@ CPU_Backend::CPU_Backend()
 
 void CPU_Backend::SetImageParameters(u32 width, u32 height, u32 frame_index, bool is_fast_random_enabled)
 {
-    frame_ = FrameInfo{
-        .width = width, .height = height, .index = frame_index, .fast_random = is_fast_random_enabled
-    };
+    config_ = Settings{ .image_width = width,
+                        .image_height = height,
+                        .frame_index = frame_index,
+                        .fast_random = is_fast_random_enabled };
 }
 
 void CPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_data,
@@ -36,18 +37,19 @@ void CPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
         threads_.emplace_back(
             [&, thread]()
             {
-                for (auto y{ thread }; y < frame_.height; y += thread_count_)
+                for (auto y{ thread }; y < config_.image_height; y += thread_count_)
                 {
-                    for (auto x{ 0zu }; x < frame_.width; ++x)
+                    for (auto x{ 0zu }; x < config_.image_width; ++x)
                     {
                         fVector4 pixel_color = RayGen(x, y);
-                        accumulation_data[x + y * frame_.width] += pixel_color;
+                        accumulation_data[x + y * config_.image_width] += pixel_color;
 
-                        fVector4 accumulated_color = accumulation_data[x + y * frame_.width];
-                        accumulated_color /= static_cast<f32>(frame_.index);
+                        fVector4 accumulated_color = accumulation_data[x + y * config_.image_width];
+                        accumulated_color /= static_cast<f32>(config_.frame_index);
 
                         accumulated_color.Clamp(fVector4{ 0.0f }, fVector4{ 1.0f });
-                        image_data[x + y * frame_.width] = ImageColor::ConvertToRGBA(accumulated_color);
+                        image_data[x + y * config_.image_width] =
+                            ImageColor::ConvertToRGBA(accumulated_color);
                     }
                 }
             });
@@ -78,7 +80,7 @@ void CPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
 fVector4 CPU_Backend::RayGen(u32 x, u32 y)
 {
     const auto &position = active_camera_->GetPosition();
-    const auto &cached_direction = active_camera_->GetRayDirections().at(x + y * frame_.width);
+    const auto &cached_direction = active_camera_->GetRayDirections().at(x + y * config_.image_width);
 
     Ray ray;
     ray.origin = fVector3{ position.x, position.y, position.z };
@@ -90,8 +92,8 @@ fVector4 CPU_Backend::RayGen(u32 x, u32 y)
     auto color_contribution = fVector3{ 1.f };
     // together, light and color_contribution are implemented to support shadows through difussed lighting
 
-    std::uint32_t seed = x + y * frame_.width;
-    seed *= frame_.index;
+    std::uint32_t seed = x + y * config_.image_width;
+    seed *= config_.frame_index;
 
     auto bounces{ 8zu };
     for (auto i{ 0zu }; i < bounces; ++i)
@@ -125,13 +127,14 @@ fVector4 CPU_Backend::RayGen(u32 x, u32 y)
         if (material.metallic)
         {
             ray.direction = fVector3::ReflectFromSurfaceUnit(
-                ray.direction, fVector3::Normalize(hit_record.world_normal
-                                                   + material.roughness * random_vector(frame_.fast_random)));
+                ray.direction,
+                fVector3::Normalize(hit_record.world_normal
+                                    + material.roughness * random_vector(config_.fast_random)));
         }
         else
         {
             ray.direction = fVector3::Normalize(hit_record.world_normal
-                                                + material.roughness * random_vector(frame_.fast_random));
+                                                + material.roughness * random_vector(config_.fast_random));
         }
     }
 
