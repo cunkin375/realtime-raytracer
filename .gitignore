@@ -12,6 +12,7 @@ build/
 *.ps1
 *.ini
 *.md
+*.sh
 
 # Exclude
 !vendor/bin
