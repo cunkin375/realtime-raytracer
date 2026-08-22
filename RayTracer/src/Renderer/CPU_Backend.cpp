@@ -1,56 +1,34 @@
-#include "Renderer.hpp"
+#include "CPU_Backend.hpp"
 
-#include <cstring>
-#include <limits>
 #include <ranges>
-
-#include <glm/geometric.hpp>
 
 #include "Math/Vector.hpp"
 #include "RayTracing/ImageColor.hpp"
-#include "RayTracing/Ray.hpp"
 #include "Util/Aliases.hpp"
 
-// Public Methods
+#include "Camera.hpp"
+#include "Scene.hpp"
 
-Renderer::Renderer()
+CPU_Backend::CPU_Backend()
 {
 #if MULTI_THREAD
     thread_count_ = std::thread::hardware_concurrency();
     threads_.reserve(thread_count_);
-#endif // MULTI_THREAD
+#endif
 }
 
-void Renderer::OnResize(u32 width, u32 height)
+void CPU_Backend::SetImageParameters(u32 width, u32 height, u32 frame_index, bool is_fast_random_enabled)
 {
-    if (final_image_)
-    {
-        if (final_image_->GetWidth() == width && final_image_->GetHeight() == height)
-            return;
-        final_image_->Resize(width, height);
-    }
-    else
-    {
-        final_image_ = std::make_shared<Walnut::Image>(width, height, Walnut::ImageFormat::RGBA);
-    }
-
-    ResetFrameIndex();
-
-    delete[] image_data_;
-    image_data_ = new u32[width * height];
-
-    delete[] accumulation_data_;
-    accumulation_data_ = new fVector4[width * height];
+    frame_ = FrameInfo{
+        .width = width, .height = height, .index = frame_index, .fast_random = is_fast_random_enabled
+    };
 }
 
-void Renderer::Render(const Camera &camera, const Scene &scene)
+void CPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_data,
+                         fVector4 *accumulation_data)
 {
-    active_scene_ = &scene;
     active_camera_ = &camera;
-
-    if (frame_index_ == 1)
-        std::memset(accumulation_data_, 0,
-                    final_image_->GetWidth() * final_image_->GetHeight() * sizeof(fVector4));
+    active_scene_ = &scene;
 
 #if MULTI_THREAD
     for (auto thread{ 0zu }; thread < thread_count_; ++thread)
@@ -58,19 +36,18 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
         threads_.emplace_back(
             [&, thread]()
             {
-                for (auto y{ thread }; y < final_image_->GetHeight(); y += thread_count_)
+                for (auto y{ thread }; y < frame_.height; y += thread_count_)
                 {
-                    for (auto x{ 0zu }; x < final_image_->GetWidth(); ++x)
+                    for (auto x{ 0zu }; x < frame_.width; ++x)
                     {
                         fVector4 pixel_color = RayGen(x, y);
-                        accumulation_data_[x + y * final_image_->GetWidth()] += pixel_color;
+                        accumulation_data[x + y * frame_.width] += pixel_color;
 
-                        fVector4 accumulated_color = accumulation_data_[x + y * final_image_->GetWidth()];
-                        accumulated_color /= static_cast<f32>(frame_index_);
+                        fVector4 accumulated_color = accumulation_data[x + y * frame_.width];
+                        accumulated_color /= static_cast<f32>(frame_.index);
 
                         accumulated_color.Clamp(fVector4{ 0.0f }, fVector4{ 1.0f });
-                        image_data_[x + y * final_image_->GetWidth()] =
-                            ImageColor::ConvertToRGBA(accumulated_color);
+                        image_data[x + y * frame_.width] = ImageColor::ConvertToRGBA(accumulated_color);
                     }
                 }
             });
@@ -93,22 +70,15 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
         }
     }
 #endif
-
-    final_image_->SetData(image_data_);
-
-    if (settings_.accumulate)
-        frame_index_++;
-    else
-        frame_index_ = 1;
 }
 
 // Private Methods
 
 // NOTE: When transferring to Vulkan, GL_LaunchID will refer coordinates of a pixel
-fVector4 Renderer::RayGen(u32 x, u32 y)
+fVector4 CPU_Backend::RayGen(u32 x, u32 y)
 {
     const auto &position = active_camera_->GetPosition();
-    const auto &cached_direction = active_camera_->GetRayDirections().at(x + y * final_image_->GetWidth());
+    const auto &cached_direction = active_camera_->GetRayDirections().at(x + y * frame_.width);
 
     Ray ray;
     ray.origin = fVector3{ position.x, position.y, position.z };
@@ -120,8 +90,8 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
     auto color_contribution = fVector3{ 1.f };
     // together, light and color_contribution are implemented to support shadows through difussed lighting
 
-    std::uint32_t seed = x + y * final_image_->GetWidth();
-    seed *= frame_index_;
+    std::uint32_t seed = x + y * frame_.width;
+    seed *= frame_.index;
 
     auto bounces{ 8zu };
     for (auto i{ 0zu }; i < bounces; ++i)
@@ -146,7 +116,7 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
         // ray is moved slightly outward to avoid being initiated from inside a surface
         ray.origin = hit_record.world_position + hit_record.world_normal * 0.0001f;
 
-        if (settings_.fast_random)
+        if (frame_.fast_random)
         {
             using namespace Math;
             ray.direction = fVector3::Normalize(
@@ -168,7 +138,7 @@ fVector4 Renderer::RayGen(u32 x, u32 y)
     return fVector4{ light.r, light.g, light.b, 1.f };
 }
 
-Renderer::HitRecord Renderer::TraceRay(const Ray &ray)
+CPU_Backend::HitRecord CPU_Backend::TraceRay(const Ray &ray)
 {
     i32 closest_sphere_index = -1;
     f32 hit_distance = std::numeric_limits<f32>::max();
@@ -203,9 +173,9 @@ Renderer::HitRecord Renderer::TraceRay(const Ray &ray)
     return ClosestHit(ray, hit_distance, closest_sphere_index);
 }
 
-Renderer::HitRecord Renderer::ClosestHit(const Ray &ray, f32 hit_distance, i32 object_index)
+CPU_Backend::HitRecord CPU_Backend::ClosestHit(const Ray &ray, f32 hit_distance, i32 object_index)
 {
-    auto hit_record = Renderer::HitRecord{ .hit_distance = hit_distance, .object_index = object_index };
+    auto hit_record = HitRecord{ .hit_distance = hit_distance, .object_index = object_index };
     const auto &closest_sphere = active_scene_->spheres.at(object_index);
 
     fVector3 origin = ray.origin - closest_sphere.position;
@@ -216,7 +186,7 @@ Renderer::HitRecord Renderer::ClosestHit(const Ray &ray, f32 hit_distance, i32 o
     return hit_record;
 }
 
-Renderer::HitRecord Renderer::Miss(const Ray &ray) { return { .hit_distance = -1 }; }
+CPU_Backend::HitRecord CPU_Backend::Miss(const Ray &ray) { return { .hit_distance = -1 }; }
 
 // TODO: come back to these
 // Renderer::HitRecord Renderer::AnyHit(const Ray &ray, f32 hit_distance, u32 object_index) {}

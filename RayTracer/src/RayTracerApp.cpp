@@ -4,7 +4,7 @@
 #include <ranges>
 
 #include "Camera.hpp"
-#include "Renderer.hpp"
+#include "Renderer/Renderer.hpp"
 
 #include "MyGui/Wrappers.hpp"
 
@@ -18,19 +18,6 @@
 
 namespace
 {
-enum class RGB
-{
-    Red,
-    Green,
-    Blue,
-};
-
-enum class Direction
-{
-    X,
-    Y,
-    Z
-};
 
 using FOV = f32;
 using NearPlane = f32;
@@ -55,9 +42,9 @@ public:
         pink_sphere.albedo = fVector3{ 1.f, 0.f, 1.f };
         pink_sphere.roughness = 0.15f;
 
-        auto &blue_sphere = scene_.materials.emplace_back();
-        blue_sphere.albedo = fVector3{ 1.f, 1.0f, 0.0f };
-        blue_sphere.roughness = 0.05f;
+        auto &yellow_sphere = scene_.materials.emplace_back();
+        yellow_sphere.albedo = fVector3{ 1.f, 1.0f, 0.0f };
+        yellow_sphere.roughness = 0.05f;
 
         auto &orange_light = scene_.materials.emplace_back();
         orange_light.albedo = { 0.8f, 0.5f, 0.2f };

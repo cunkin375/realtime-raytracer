@@ -1,27 +1,16 @@
 #pragma once
 
-#include <memory>
 #include <thread>
-#include <vector>
-
-#include "Walnut/Image.h"
-
-#include "Scene.hpp"
 
 #include "Camera.hpp"
+#include "Scene.hpp"
+
 #include "Math/Vector.hpp"
 #include "RayTracing/Ray.hpp"
 #include "Util/Aliases.hpp"
 
-class Renderer
+class CPU_Backend
 {
-public:
-    struct Settings
-    {
-        bool accumulate{ true };
-        bool fast_random{ true };
-    };
-
 private:
     struct HitRecord
     {
@@ -31,37 +20,29 @@ private:
         i32 object_index;
     };
 
+    struct FrameInfo
+    {
+        u32 width;
+        u32 height;
+        u32 index;
+        bool fast_random;
+    };
+
 private:
-    std::vector<std::jthread> threads_{};
+    std::vector<std::jthread> threads_;
+    u32 thread_count_{ 0 };
 
-    std::vector<u32> image_horizontal_iterator_;
-    std::vector<u32> image_vertical_iterator_;
-
-    std::shared_ptr<Walnut::Image> final_image_{};
-
-    Settings settings_;
-
-    u32 *image_data_{ nullptr };
-    fVector4 *accumulation_data_{ nullptr };
+    FrameInfo frame_;
 
     const Scene *active_scene_{ nullptr };
     const Camera *active_camera_{ nullptr };
 
-    u32 thread_count_{ 0 };
-
-    u32 frame_index_{ 1 };
-
 public:
-    Renderer();
+    CPU_Backend();
 
-    void Render(const Camera &camera, const Scene &scene);
-    void OnResize(u32 width, u32 height);
+    void Render(const Camera &camera, const Scene &scene, u32 *image_data, fVector4 *accumulation_data);
 
-    std::shared_ptr<Walnut::Image> GetFinalImage() const noexcept { return final_image_; }
-
-    void ResetFrameIndex() { frame_index_ = 1; }
-
-    Settings &GetSettings() { return settings_; }
+    void SetImageParameters(u32 width, u32 height, u32 frame_index_, bool is_fast_random_enabled);
 
 private:
     // NOTE: All of these function resemble shaders in a Vulkan ray tracing pipeline

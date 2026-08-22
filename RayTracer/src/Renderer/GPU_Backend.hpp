@@ -1,6 +1,6 @@
 #pragma once
 
-class GPU_Renderer
+class GPU_Backend
 {
 
 };
