@@ -40,7 +40,7 @@ public:
     {
         auto &pink_sphere = scene_.materials.emplace_back();
         pink_sphere.albedo = fVector3{ 1.f, 0.f, 1.f };
-        pink_sphere.roughness = 0.15f;
+        pink_sphere.roughness = 1.00f;
 
         auto &yellow_sphere = scene_.materials.emplace_back();
         yellow_sphere.albedo = fVector3{ 1.f, 1.0f, 0.0f };
@@ -55,6 +55,8 @@ public:
         scene_.spheres.push_back({ .position{ 0.f, -101.f, 0.f }, .radius = 100.f, .material_index = 0 });
         scene_.spheres.push_back({ .position{ 0.f }, .radius = 1.0f, .material_index = 1 });
         scene_.spheres.push_back({ .position{ 3.f, 0.f, 0.f }, .radius = 1.0f, .material_index = 2 });
+
+        scene_.background = fVector3{ 0.576f, 0.879f, 0.869f };
     }
 
     virtual void OnUpdate(f32 timestamp) override
