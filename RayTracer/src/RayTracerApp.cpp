@@ -2,6 +2,7 @@
 
 #include <limits>
 #include <ranges>
+#include <filesystem>
 
 #include "Camera.hpp"
 #include "Renderer/Renderer.hpp"
@@ -38,6 +39,11 @@ private:
 public:
     RayTracerLayer() : camera_(FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f })
     {
+        if (!std::filesystem::exists("imgui.ini"))
+        {
+            ImGui::LoadIniSettingsFromDisk("DefaultLayout.ini");
+        }
+
         auto &pink_sphere = scene_.materials.emplace_back();
         pink_sphere.albedo = fVector3{ 1.f, 0.f, 1.f };
         pink_sphere.roughness = 1.00f;
