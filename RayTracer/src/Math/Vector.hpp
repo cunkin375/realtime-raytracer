@@ -304,7 +304,7 @@ struct VectorOperations
         return new_vector;
     }
 
-    // very simple rejection method, can be optimized
+    // very simple rejection method, can be optimized:
     static constexpr Derived GenerateRandomUnitVector()
     {
         while (true)

@@ -106,9 +106,9 @@ public:
         {
             ImGui::PushID(id);
 
-            if (ImGui::ColorEdit3("Albedo", Math::ValuePointer(material.albedo))
+            if (ImGui::Checkbox("Metallic", &material.metallic)
+                || ImGui::ColorEdit3("Albedo", Math::ValuePointer(material.albedo))
                 || ImGui::DragFloat("Roughness", &material.roughness, 0.01f, 0.f, 1.f)
-                || ImGui::DragFloat("Metallic", &material.metallic, 0.01f, 0.f, 1.f)
                 || ImGui::ColorEdit3("Emission Color", Math::ValuePointer(material.emission_color))
                 || ImGui::DragFloat("Emission Power", &material.emission_power, 0.01f, 0.f,
                                     std::numeric_limits<f32>::max()))
@@ -116,15 +116,10 @@ public:
                 reset_frame_index = true;
             }
 
+            MyGui::Padding(ImVec2{ 0.f, 10.f });
+
             ImGui::PopID();
         }
-
-        // MyGui::Padding(ImVec2{ 0.f, 10.f });
-        // if (ImGui::DragFloat3("Light Direction", Math::ValuePointer(scene_.light_direction), 0.01f, -1.f,
-        //                       1.f))
-        // {
-        //     reset_frame_index = true;
-        // }
 
         ImGui::End(); // Scene
 

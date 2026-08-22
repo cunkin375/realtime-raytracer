@@ -116,18 +116,22 @@ fVector4 CPU_Backend::RayGen(u32 x, u32 y)
         // ray is moved slightly outward to avoid being initiated from inside a surface
         ray.origin = hit_record.world_position + hit_record.world_normal * 0.0001f;
 
-        if (frame_.fast_random)
+        auto random_vector = [&seed](bool fast_random)
         {
-            ray.direction =
-                fVector3::Normalize(hit_record.world_normal + fVector3::FastUnitSphereVector(seed));
+            return (fast_random ? fVector3::FastUnitSphereVector(seed)
+                                : fVector3::GenerateRandomUnitVector());
+        };
+
+        if (material.metallic)
+        {
+            ray.direction = fVector3::ReflectFromSurfaceNormal(
+                ray.direction, fVector3::Normalize(hit_record.world_normal
+                                                   + material.roughness * random_vector(frame_.fast_random)));
         }
         else
         {
-            // the reason this is so slow is because it seeds a new random device at every frame
-            // it was originally used before fast_random because it allowed for thread local random number
-            // generation with mersenne_twister_engine across GCC and MSVC
-            ray.direction =
-                fVector3::Normalize(hit_record.world_normal + fVector3::GenerateRandomUnitVector());
+            ray.direction = fVector3::Normalize(hit_record.world_normal
+                                                + material.roughness * random_vector(frame_.fast_random));
         }
     }
 
