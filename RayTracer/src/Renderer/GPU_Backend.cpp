@@ -3,10 +3,57 @@
 #include <memory>
 #include <vulkan/vulkan.h>
 
+// clang-format off
+/**
+| Getting HLSL to compile across Windows and Linux is really annoying, so everything here MUST stay in the
+| exact order that it is in. INITGUID is needed for Windows to properly used the Windows Runtiem Template
+| Library, which provides smart pointers for COM used by the DirectX Compiler (DXC). Using C++ smart pointers
+| will not work and return errors when ID_PPV_ARGS expands to __uuidof(**(ppType)), ID_PPV_ARGS_Helper(ppvType).
+*/
+// clang-format on
 #define INITGUID
 #ifdef _WIN32
 #include <initguid.h>
 #include <wrl/client.h>
+#endif
+
+/**
+| GUID definitions for DXC interfaces. MinGW does not define these.
+*/
+#ifdef __MINGW32__
+namespace MinGWHelper
+{
+constexpr uint8_t Nybble(char c)
+{
+    return (c >= '0' && c <= '9')   ? static_cast<uint8_t>(c - '0')
+           : (c >= 'a' && c <= 'f') ? static_cast<uint8_t>(c - 'a' + 10)
+           : (c >= 'A' && c <= 'F') ? static_cast<uint8_t>(c - 'A' + 10)
+                                    : 0;
+}
+constexpr uint8_t Byte(char c1, char c2) { return static_cast<uint8_t>((Nybble(c1) << 4) | Nybble(c2)); }
+} // namespace MinGWHelper
+
+#define CROSS_PLATFORM_UUIDOF(interface, spec)                                                               \
+    struct interface;                                                                                        \
+    template <>                                                                                              \
+    inline const GUID &__mingw_uuidof<interface>()                                                           \
+    {                                                                                                        \
+        static constexpr GUID guid = {                                                                       \
+            static_cast<uint32_t>(MinGWHelper::Byte(spec[0], spec[1])) << 24                                 \
+                | static_cast<uint32_t>(MinGWHelper::Byte(spec[2], spec[3])) << 16                           \
+                | static_cast<uint32_t>(MinGWHelper::Byte(spec[4], spec[5])) << 8                            \
+                | MinGWHelper::Byte(spec[6], spec[7]),                                                       \
+            static_cast<uint16_t>(static_cast<uint16_t>(MinGWHelper::Byte(spec[9], spec[10])) << 8           \
+                                  | MinGWHelper::Byte(spec[11], spec[12])),                                  \
+            static_cast<uint16_t>(static_cast<uint16_t>(MinGWHelper::Byte(spec[14], spec[15])) << 8          \
+                                  | MinGWHelper::Byte(spec[16], spec[17])),                                  \
+            { MinGWHelper::Byte(spec[19], spec[20]), MinGWHelper::Byte(spec[21], spec[22]),                  \
+              MinGWHelper::Byte(spec[24], spec[25]), MinGWHelper::Byte(spec[26], spec[27]),                  \
+              MinGWHelper::Byte(spec[28], spec[29]), MinGWHelper::Byte(spec[30], spec[31]),                  \
+              MinGWHelper::Byte(spec[32], spec[33]), MinGWHelper::Byte(spec[34], spec[35]) }                 \
+        };                                                                                                   \
+        return guid;                                                                                         \
+    }
 #endif
 
 #include <dxc/dxcapi.h>
@@ -20,14 +67,15 @@
 namespace
 {
 
-struct DxcDeleter
-{
-    void operator()(IUnknown *pointer) const
-    {
-        if (pointer != nullptr)
-            pointer->Release();
-    }
-};
+// These are COM smart pointers that work across Windows and Linux
+// -
+#ifdef _WIN32
+template <typename T>
+using ComPtr = Microsoft::WRL::ComPtr<T>;
+#else
+template <typename T>
+using ComPtr = CComPtr<T>;
+#endif
 
 void Check(VkResult result, std::source_location location = std::source_location::current())
 {
@@ -149,11 +197,10 @@ void Render() {}
 
 bool GPU_Backend::CompileShaders(std::string_view shader_path)
 {
-
-    std::unique_ptr<IDxcUtils, DxcDeleter> utils;
+    ComPtr<IDxcUtils> utils;
     Check(::DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils)));
 
-    IDxcCompiler3 *compiler;
+    ComPtr<IDxcCompiler3> compiler;
     Check(::DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler)));
 
     auto file_data = Util::LoadAsBinary(shader_path);
@@ -161,8 +208,8 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
         return false;
 
     // Create a blob with encoding from the pinned memory
-    IDxcBlobEncoding *source_blob;
-    Check(utils->CreateBlobFromPinned(file_data.data(), static_cast<UINT32>(file_data.size()), CP_UTF8,
+    ComPtr<IDxcBlobEncoding> source_blob;
+    Check(utils->CreateBlobFromPinned(file_data.data(), static_cast<UINT32>(file_data.size()), DXC_CP_UTF8,
                                       &source_blob));
 
     // Fill the DxcBuffer safely from the blob
@@ -175,11 +222,11 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
     std::vector<LPCWSTR> arguments = { L"-spirv", L"-T",   L"cs_6_5",
                                        L"-E",     L"main", L"-fspv-target-env=vulkan1.3" };
 
-    std::unique_ptr<IDxcResult, DxcDeleter> result;
+    ComPtr<IDxcResult> result;
     compiler->Compile(&source_buffer, arguments.data(), static_cast<u32>(arguments.size()), nullptr,
                       IID_PPV_ARGS(&result));
 
-    std::unique_ptr<IDxcBlobUtf8, DxcDeleter> errors;
+    ComPtr<IDxcBlobUtf8> errors;
     result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
     if (errors != nullptr && errors->GetStringLength() != 0zu)
     {
@@ -188,7 +235,7 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
         return false;
     }
 
-    std::unique_ptr<IDxcBlob, DxcDeleter> spriv_blob;
+    ComPtr<IDxcBlob> spriv_blob;
     result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&spriv_blob), nullptr);
 
     // NOTE: this might change as the GPU pipeline is optimized
