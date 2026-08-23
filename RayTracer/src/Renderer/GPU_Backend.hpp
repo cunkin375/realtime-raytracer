@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
+
 #include "Camera.hpp"
 #include "Scene.hpp"
 
@@ -22,10 +24,19 @@ private:
 private:
     Settings config_;
 
-    DirectoryWatcher shader_watcher_;
+    std::unique_ptr<DirectoryWatcher> shader_watcher_{ nullptr };
 
     const Scene *active_scene_{ nullptr };
     const Camera *active_camera_{ nullptr };
+
+    bool valid_state_{ false };
+
+private:
+    ::VkDevice device_{ VK_NULL_HANDLE };
+    ::VkShaderModule compute_shader_module_{ VK_NULL_HANDLE };
+    ::VkDescriptorSetLayout descriptor_set_layout_{ VK_NULL_HANDLE };
+    ::VkPipelineLayout pipeline_layout_{ VK_NULL_HANDLE };
+    ::VkPipeline compute_pipeline_{ VK_NULL_HANDLE };
 
 public:
     GPU_Backend();
@@ -34,7 +45,9 @@ public:
 
     void SetImageParameters(u32 width, u32 height, u32 frame_index_, bool is_fast_random_enabled);
 
+    bool ValidState() { return valid_state_; }
+
 private:
-    void CompileShaders();
+    bool CompileShaders(std::string shader_path);
     void HotReloadShader();
 };

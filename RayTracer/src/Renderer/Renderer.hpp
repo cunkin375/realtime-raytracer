@@ -23,15 +23,6 @@ public:
         bool fast_random{ true };
     };
 
-private:
-    struct HitRecord
-    {
-        fVector3 world_position;
-        fVector3 world_normal;
-        f32 hit_distance;
-        i32 object_index;
-    };
-
     enum class Backend
     {
         CPU,
@@ -54,8 +45,12 @@ private:
 public:
     Renderer() = default;
 
+    void OnUpdate(f32 timestamp);
+
     void Render(const Camera &camera, const Scene &scene);
     void OnResize(u32 width, u32 height);
+
+    void SetBackend(Renderer::Backend new_backend) { active_backend_ = new_backend; }
 
     std::shared_ptr<Walnut::Image> GetFinalImage() const noexcept { return final_image_; }
 

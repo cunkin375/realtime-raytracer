@@ -9,7 +9,7 @@ endif()
 
 include_directories(SYSTEM $ENV{VULKAN_SDK}/include)
 
-find_package(Vulkan REQUIRED)
+find_package(Vulkan REQUIRED COMPONENTS dxc)
 
 add_executable(RayTracer ${SOURCE_FILES})
 
@@ -32,6 +32,7 @@ target_include_directories(RayTracer PRIVATE
 target_link_libraries(RayTracer PRIVATE
     Walnut
     Vulkan::Vulkan
+    Vulkan::dxc_lib
     $<$<CXX_COMPILER_ID:Clang>:-fexperimental-library>
     $<$<CXX_COMPILER_ID:GNU>:stdc++exp>
 )

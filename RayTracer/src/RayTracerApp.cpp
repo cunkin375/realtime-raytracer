@@ -69,6 +69,7 @@ public:
     {
         if (camera_.OnUpdate(timestamp))
             renderer_.ResetFrameIndex();
+        renderer_.OnUpdate(timestamp);
     }
 
     virtual void OnUIRender() override

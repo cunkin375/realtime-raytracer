@@ -11,6 +11,12 @@
 
 // Public Methods
 
+void Renderer::OnUpdate(f32 timestamp)
+{
+    if (!gpu_.ValidState())
+        active_backend_ = Backend::CPU;
+}
+
 void Renderer::OnResize(u32 width, u32 height)
 {
     if (final_image_)
