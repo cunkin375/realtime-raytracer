@@ -1,16 +1,9 @@
 #include "GPU_Backend.hpp"
 
-#include <fstream>
-#include <iostream>
-
+#include <memory>
 #include <vulkan/vulkan.h>
 
-// clang-format off
-#define INITGUID
-#include <wrl/client.h>
 #include <dxc/dxcapi.h>
-#undef INITGUID
-// clang-format on
 
 #include "Util/Aliases.hpp"
 #include "Util/Log.hpp"
@@ -19,6 +12,16 @@
 
 namespace
 {
+
+struct DxcDeleter
+{
+    void operator()(IUnknown *pointer) const
+    {
+        if (pointer != nullptr)
+            pointer->Release();
+    }
+};
+
 void Check(VkResult result, std::source_location location = std::source_location::current())
 {
     using namespace Log;
@@ -139,10 +142,11 @@ void Render() {}
 
 bool GPU_Backend::CompileShaders(std::string_view shader_path)
 {
-    Microsoft::WRL::ComPtr<IDxcUtils> utils;
+
+    std::unique_ptr<IDxcUtils, DxcDeleter> utils;
     Check(::DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils)));
 
-    Microsoft::WRL::ComPtr<IDxcCompiler3> compiler;
+    IDxcCompiler3 *compiler;
     Check(::DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler)));
 
     auto file_data = Util::LoadAsBinary(shader_path);
@@ -150,7 +154,7 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
         return false;
 
     // Create a blob with encoding from the pinned memory
-    Microsoft::WRL::ComPtr<IDxcBlobEncoding> source_blob;
+    IDxcBlobEncoding *source_blob;
     Check(utils->CreateBlobFromPinned(file_data.data(), static_cast<UINT32>(file_data.size()), CP_UTF8,
                                       &source_blob));
 
@@ -164,11 +168,11 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
     std::vector<LPCWSTR> arguments = { L"-spirv", L"-T",   L"cs_6_5",
                                        L"-E",     L"main", L"-fspv-target-env=vulkan1.3" };
 
-    Microsoft::WRL::ComPtr<IDxcResult> result;
+    std::unique_ptr<IDxcResult, DxcDeleter> result;
     compiler->Compile(&source_buffer, arguments.data(), static_cast<u32>(arguments.size()), nullptr,
                       IID_PPV_ARGS(&result));
 
-    Microsoft::WRL::ComPtr<IDxcBlobUtf8> errors;
+    std::unique_ptr<IDxcBlobUtf8, DxcDeleter> errors;
     result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
     if (errors != nullptr && errors->GetStringLength() != 0zu)
     {
@@ -177,7 +181,7 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
         return false;
     }
 
-    Microsoft::WRL::ComPtr<IDxcBlob> spriv_blob;
+    std::unique_ptr<IDxcBlob, DxcDeleter> spriv_blob;
     result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&spriv_blob), nullptr);
 
     // NOTE: this might change as the GPU pipeline is optimized

@@ -8,7 +8,6 @@ else()
 endif()
 
 include_directories(SYSTEM $ENV{VULKAN_SDK}/include)
-
 find_package(Vulkan REQUIRED COMPONENTS dxc)
 
 add_executable(RayTracer ${SOURCE_FILES})
@@ -35,6 +34,13 @@ target_link_libraries(RayTracer PRIVATE
     Vulkan::dxc_lib
     $<$<CXX_COMPILER_ID:Clang>:-fexperimental-library>
     $<$<CXX_COMPILER_ID:GNU>:stdc++exp>
+)
+
+
+
+set_target_properties(RayTracer PROPERTIES
+    BUILD_WITH_INSTALL_RPATH TRUE
+    INSTALL_PATH $ENV{VULKAN_SDK}/lib
 )
 
 if (WIN32)
