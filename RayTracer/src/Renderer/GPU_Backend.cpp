@@ -3,7 +3,14 @@
 #include <memory>
 #include <vulkan/vulkan.h>
 
+#define INITGUID
+#ifdef _WIN32
+#include <initguid.h>
+#include <wrl/client.h>
+#endif
+
 #include <dxc/dxcapi.h>
+#undef INITGUID
 
 #include "Util/Aliases.hpp"
 #include "Util/Log.hpp"
