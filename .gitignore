@@ -27,3 +27,4 @@ RayTracer/diagnostics/
 build_ninja
 build_vs
 CMakeSettings.json
+.clangd
