@@ -80,7 +80,7 @@ struct DirectoryWatcher::Implementation
         auto has_shader_extension = [](std::string_view name) -> bool
         {
             constexpr std::string_view extensions[] = { ".vert", ".frag", ".geom", ".tesc",
-                                                        ".tese", ".comp", ".glsl" };
+                                                        ".tese", ".comp", ".glsl", ".hlsl" };
             for (auto extension : extensions)
             {
                 if (name.size() >= extension.size() &&
