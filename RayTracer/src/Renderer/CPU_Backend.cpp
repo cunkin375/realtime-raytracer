@@ -192,5 +192,5 @@ CPU_Backend::HitRecord CPU_Backend::ClosestHit(const Ray &ray, f32 hit_distance,
 CPU_Backend::HitRecord CPU_Backend::Miss(const Ray &ray) { return { .hit_distance = -1 }; }
 
 // TODO: come back to these
-// Renderer::HitRecord Renderer::AnyHit(const Ray &ray, f32 hit_distance, u32 object_index) {}
-// Renderer::HitRecord Renderer::Intersection(const Ray &ray, f32 hit_distance, u32 object_index) {}
+// CPU_Backend::HitRecord CPU_Backend::AnyHit(const Ray &ray, f32 hit_distance, u32 object_index) {}
+// CPU_Backend::HitRecord CPU_Backend::Intersection(const Ray &ray, f32 hit_distance, u32 object_index) {}
