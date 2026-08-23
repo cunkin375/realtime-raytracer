@@ -40,7 +40,7 @@ target_link_libraries(RayTracer PRIVATE
 
 set_target_properties(RayTracer PROPERTIES
     BUILD_WITH_INSTALL_RPATH TRUE
-    INSTALL_PATH $ENV{VULKAN_SDK}/lib
+    INSTALL_RPATH $ENV{VULKAN_SDK}/lib
 )
 
 if (WIN32)
