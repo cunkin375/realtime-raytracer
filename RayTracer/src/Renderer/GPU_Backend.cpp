@@ -10,7 +10,6 @@
 | Library, which provides smart pointers for COM used by the DirectX Compiler (DXC). Using C++ smart pointers
 | will not work and return errors when ID_PPV_ARGS expands to __uuidof(**(ppType)), ID_PPV_ARGS_Helper(ppvType).
 */
-// clang-format on
 #define INITGUID
 #ifdef _WIN32
 #include <initguid.h>
@@ -58,6 +57,7 @@ constexpr uint8_t Byte(char c1, char c2) { return static_cast<uint8_t>((Nybble(c
 
 #include <dxc/dxcapi.h>
 #undef INITGUID
+// clang-format on
 
 #include "Util/Aliases.hpp"
 #include "Util/Log.hpp"
@@ -68,7 +68,6 @@ namespace
 {
 
 // These are COM smart pointers that work across Windows and Linux
-// -
 #ifdef _WIN32
 template <typename T>
 using ComPtr = Microsoft::WRL::ComPtr<T>;
