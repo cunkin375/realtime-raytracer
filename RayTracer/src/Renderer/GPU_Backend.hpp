@@ -48,6 +48,6 @@ public:
     bool ValidState() { return valid_state_; }
 
 private:
-    bool CompileShaders(std::string shader_path);
+    bool CompileShaders(std::string_view shader_path);
     void HotReloadShader();
 };

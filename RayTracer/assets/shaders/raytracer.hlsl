@@ -1,3 +1,20 @@
+struct Metadata
+{
+    float3 camera_position;
+    float3 ray_direction;
+    float2 viewport;
+    float1 frame_index;
+    float1 seed;
+};
+[[vk::binding(0, 0)]] ConstantBuffer<Metadata> metaBuffer : register(b0, space0);
+
+struct Sphere
+{
+    float3 posittion;
+    float1 radius;
+    int1 material_index;
+};
+
 struct HitRecord
 {
     float4 world_position;
@@ -47,7 +64,7 @@ void main(uint3 id : SV_DispatchThreadID)
     uint x = id.x;
     uint y = id.y;
     float4 pixel_color = RayGen(x, y);
-    accumulation_data[x + y * config_.image_width] += pixel_color;
+    accumulation_data[x + y * image_width] += pixel_color;
 
     float4 accumulated_color = accumulation_data[x + y * image_width];
     accumulated_color = accumulated_color / frame_index;

@@ -32,7 +32,21 @@ constexpr const char *GetLevel(Level level)
 
 inline void PrintImpl(Level Lvl, std::source_location location, std::string formatted)
 {
-    std::println("[{}] {}:{} {}", GetLevel(Lvl),
+    FILE *destination;
+    switch (Lvl)
+    { // clang-format off
+        case Level::Debug:
+        case Level::Info: 
+            destination = stdout; 
+            break;
+        case Level::Warn:
+        case Level::Error:
+        case Level::Fatal: 
+            destination = stderr; 
+            break;
+        default: destination = stdout;
+    } // clang-format off
+    std::println(destination, "[{}] {}:{} {}", GetLevel(Lvl),
                  std::filesystem::path{ location.file_name() }.filename().string(), location.line(),
                  formatted);
 }
@@ -54,7 +68,7 @@ struct Print
 template <Level Lvl, typename... Args>
 Print(std::format_string<Args...>, Args &&...) -> Print<Lvl, Args...>;
 
-// free function for source_location forwarding 
+// free function for source_location forwarding
 // - avoids argument template argument deduction issues with clang
 template <Level Lvl, typename... Args>
 void PrintAt(std::source_location location, std::format_string<Args...> message, Args &&...args)

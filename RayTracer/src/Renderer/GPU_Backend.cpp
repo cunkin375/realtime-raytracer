@@ -137,7 +137,7 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
 
 void Render() {}
 
-bool GPU_Backend::CompileShaders(std::string shader_path)
+bool GPU_Backend::CompileShaders(std::string_view shader_path)
 {
     Microsoft::WRL::ComPtr<IDxcUtils> utils;
     Check(::DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils)));
@@ -145,23 +145,9 @@ bool GPU_Backend::CompileShaders(std::string shader_path)
     Microsoft::WRL::ComPtr<IDxcCompiler3> compiler;
     Check(::DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler)));
 
-    auto resolved_path = Util::ResolvePath(shader_path);
-    auto file = std::ifstream{ resolved_path, std::ios::binary };
-    if (!file.is_open())
-    {
-        Log::Error("Failed to open {}!", shader_path);
-        return false;
-    }
-
-    // read until EOF
-    auto file_data =
-        std::vector<char>{ (std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>() };
-    file.close();
+    auto file_data = Util::LoadAsBinary(shader_path);
     if (file_data.empty())
-    {
-        Log::Error("{} is empty!", shader_path);
         return false;
-    }
 
     // Create a blob with encoding from the pinned memory
     Microsoft::WRL::ComPtr<IDxcBlobEncoding> source_blob;
@@ -186,6 +172,7 @@ bool GPU_Backend::CompileShaders(std::string shader_path)
     result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
     if (errors != nullptr && errors->GetStringLength() != 0zu)
     {
+        Log::Error("Compilation error in: {}", shader_path);
         std::cerr << errors->GetStringPointer() << "\n";
         return false;
     }
