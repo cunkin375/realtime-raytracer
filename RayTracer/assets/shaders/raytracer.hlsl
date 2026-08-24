@@ -41,13 +41,14 @@ struct Ray
 
 
 // Vulkan Bindings
+// vk::binding(binding_number, descriptor_set_number) or binding(binding_number)
 [[vk::binding(0, 0)]] ConstantBuffer<Metadata> meta_buffer : register(b0, space0);
-[[vk::binding(0, 1)]] StructuredBuffer<Sphere> spheres : register(t0, space0);
-[[vk::binding(0, 2)]] StructuredBuffer<Material> materials : register(t1, space0);
+[[vk::binding(1, 0)]] StructuredBuffer<Sphere> spheres : register(t0, space0);
+[[vk::binding(2, 0)]] StructuredBuffer<Material> materials : register(t1, space0);
 // - these are likely temporary
 // - image_data should ideally not be linked with CPU at this stage
-[[vk::binding(0, 3)]] RWStructuredBuffer<float4> accumulation_data : register(u0, space0);
-[[vk::binding(0, 4)]] RWStructuredBuffer<uint> image_data : register(u1, space0);
+[[vk::binding(3, 0)]] RWStructuredBuffer<float4> accumulation_data : register(u0, space0);
+[[vk::binding(4, 0)]] RWStructuredBuffer<uint> image_data : register(u1, space0);
 
 // Returns a random seed between 0 and 1
 uint PCG_Hash(uint input)
