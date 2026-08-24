@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <limits>
 #include <random>
+#include <cstring>
 
 #include "Numbers.hpp"
 
