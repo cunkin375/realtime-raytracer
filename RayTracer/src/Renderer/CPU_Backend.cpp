@@ -189,7 +189,7 @@ CPU_Backend::HitRecord CPU_Backend::ClosestHit(const Ray &ray, f32 hit_distance,
     return hit_record;
 }
 
-CPU_Backend::HitRecord CPU_Backend::Miss(const Ray &ray) { return { .hit_distance = -1 }; }
+CPU_Backend::HitRecord CPU_Backend::Miss(const Ray &ray) { return HitRecord{ .hit_distance = -1 }; }
 
 // TODO: come back to these
 // CPU_Backend::HitRecord CPU_Backend::AnyHit(const Ray &ray, f32 hit_distance, u32 object_index) {}

@@ -5,42 +5,49 @@ struct Metadata
     float3 background;
     float image_width;
     float frame_index;
+    uint num_spheres;
 };
-[[vk::binding(0, 0)]] ConstantBuffer<Metadata> meta_buffer : register(b0, space0);
 
 struct Sphere
 {
-    float3 posittion;
+    float3 position;
     float radius;
     int material_index;
 };
-[[vk::binding(0, 1)]] StructuredBuffer<Sphere> spheres : register(t0, space0);
 
 struct Material
 {
+    float3 albedo;
+    float3 emission_color;
+    float roughness;
+    float emission_power;
+    bool metallic;
+    float3 GetEmission() { return emission_color * emission_power; }
 };
-[[vk::binding(0, 2)]] StructuredBuffer<Material> materials : register(t0, space0);
 
 struct HitRecord
 {
-    float4 world_position;
-    float4 world_normal;
+    float3 world_position;
+    float3 world_normal;
     float hit_distance;
     int object_index;
 };
 
 struct Ray
 {
-    float4 origin;
-    float4 direction;
+    float3 origin;
+    float3 direction;
 };
 
 
 // Vulkan Bindings
+[[vk::binding(0, 0)]] ConstantBuffer<Metadata> meta_buffer : register(b0, space0);
+[[vk::binding(0, 1)]] StructuredBuffer<Sphere> spheres : register(t0, space0);
+[[vk::binding(0, 2)]] StructuredBuffer<Material> materials : register(t1, space0);
 // - these are likely temporary
 // - image_data should ideally not be linked with CPU at this stage
 [[vk::binding(0, 3)]] RWStructuredBuffer<float4> accumulation_data : register(u0, space0);
-[[vk::binding(0, 4)]] RWStructuredBuffer<float4> image_data : register(u1, space0);
+[[vk::binding(0, 4)]] RWStructuredBuffer<uint> image_data : register(u1, space0);
 
 // Returns a random seed between 0 and 1
 uint PCG_Hash(uint input)
@@ -50,7 +57,7 @@ uint PCG_Hash(uint input)
     return (word >> 22u) ^ word;
 }
 
-// does not keep 32 bits of entropy
+/* does not keep 32 bits of entropy */
 // float RandomUnitInterval(uint seed)
 // {
 //     const int IEEE_mantissa = 0x007FFFFF;
@@ -65,9 +72,8 @@ uint PCG_Hash(uint input)
 float RandomUnitInterval(uint seed)
 {
     seed = PCG_Hash(seed);
-    return asfloat(result) / 0xFFFFFFFF;
+    return asfloat(seed) / 0xFFFFFFFF;
 }
-
 
 float3 RandomUnitSphereVector(uint seed)
 {
@@ -77,22 +83,65 @@ float3 RandomUnitSphereVector(uint seed)
     return normalize(float3(x, y, z));
 }
 
-HitRecord TraceRay(const Ray ray)
-{
-    HitRecord record;
-    return record;
-}
-
 HitRecord ClosestHit(const Ray ray, float hit_distance, int object_index)
 {
     HitRecord record;
+    record.hit_distance = hit_distance;
+    record.object_index = object_index;
+
+    Sphere closest_sphere = spheres[object_index];
+
+    float3 origin = ray.origin - closest_sphere.position;
+    record.world_position = origin * ray.direction * hit_distance;
+    record.world_normal = normalize(record.world_position);
+
+    record.world_position += closest_sphere.position;
     return record;
 }
 
 HitRecord Miss(const Ray ray)
 {
     HitRecord record;
+    record.hit_distance = -1;
     return record;
+}
+
+HitRecord TraceRay(const Ray ray)
+{
+    int closest_sphere_index = -1;
+    float hit_distance = 0xFFFFFFFF;
+
+    for (uint i = 0; i < meta_buffer.num_spheres; i++)
+    {
+        Sphere sphere = spheres[i];
+
+        float3 origin = ray.origin - sphere.position;
+
+        float a = dot(ray.direction, ray.direction);
+        float b = 2.f * dot(origin, ray.direction);
+        float c = dot(origin, origin) - sphere.radius * sphere.radius;
+
+        float discriminant = b * b - 4.f * a * c;
+
+        if (discriminant < 0.f)
+            continue;
+
+        float t[] = { -b - sqrt(discriminant) / (2.f * a), (-b * sqrt(discriminant)) / (2.f * a) };
+
+        float closest_t = min(t[0], t[1]);
+
+        if (closest_t > 0.0f && closest_t < hit_distance)
+        {
+            hit_distance = closest_t;
+            closest_sphere_index = i;
+        }
+    }
+
+    if (closest_sphere_index == -1)
+        return Miss(ray);
+
+    return ClosestHit(ray, hit_distance, closest_sphere_index);
+
 }
 
 // Generates a random vector with sampled color information
@@ -103,9 +152,9 @@ float4 RayGen(uint x, uint y)
     ray.direction = meta_buffer.ray_direction;
 
     // a ray's light starts at 0 and accumulates light from light sources
-    float3 light = float3(0.f);
+    float3 light = float3(0.f, 0.f, 0.f);
     // it fully contributes collor across all channels, but diminishes as it hits materials that absorb color
-    float3 color_contribution = float3(1.f);
+    float3 color_contribution = float3(1.f, 1.f, 1.f);
     // together, light and color_contribution are implemented to support shadows through difussed lighting
 
     uint seed = x + y * meta_buffer.image_width;
@@ -124,15 +173,39 @@ float4 RayGen(uint x, uint y)
             break;
         }
 
-        // const Sphere closest_sphere =
+        const Sphere sphere = spheres[record.object_index];
+        const Material material = materials[sphere.material_index];
+
+        light += material.GetEmission();
+        color_contribution *= material.albedo;
+
+        // avoid initiation inside a surface
+        ray.origin = record.world_position + record.world_normal * 0.0001f;
+
+        if (material.metallic)
+        {
+            ray.direction = reflect(
+                ray.direction,
+                normalize(record.world_normal + material.roughness * RandomUnitSphereVector(seed)));
+        }
+        else
+        {
+            ray.direction = normalize(
+                record.world_normal + material.roughness * RandomUnitInterval(seed));
+
+        }
     }
 
-    return float4(0, 0, 0, 0);
+    return float4(light.r, light.g, light.b, 1.f);
 }
 
-float4 ConvertToRGBA(float4 color)
+uint ConvertToRGBA(float4 color)
 {
-    return float4(0, 0, 0, 0);
+    uint r = uint(color.r * 255.f);
+    uint g = uint(color.g * 255.f);
+    uint b = uint(color.b * 255.f);
+    uint a = uint(color.a * 255.f);
+    return (a << 24) | (b << 16) | (g << 8) | r;
 }
 
 [shader("compute")]
