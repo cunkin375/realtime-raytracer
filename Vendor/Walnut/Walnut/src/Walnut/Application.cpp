@@ -39,7 +39,7 @@ static VkPhysicalDevice         g_PhysicalDevice = VK_NULL_HANDLE;
 static VkDevice                 g_Device = VK_NULL_HANDLE;
 static uint32_t                 g_QueueFamily = (uint32_t)-1;
 static VkQueue                  g_Queue = VK_NULL_HANDLE;
-static VkDebugReportCallbackEXT g_DebugReport = VK_NULL_HANDLE;
+static VkDebugUtilsMessengerEXT g_DebugMessenger = VK_NULL_HANDLE;
 static VkPipelineCache          g_PipelineCache = VK_NULL_HANDLE;
 static VkDescriptorPool         g_DescriptorPool = VK_NULL_HANDLE;
 
@@ -67,10 +67,14 @@ void check_vk_result(VkResult err)
 }
 
 #ifdef IMGUI_VULKAN_DEBUG_REPORT
-static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
+static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
+	VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+	VkDebugUtilsMessageTypeFlagsEXT messageType,
+	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+	void* pUserData)
 {
-	(void)flags; (void)object; (void)location; (void)messageCode; (void)pUserData; (void)pLayerPrefix; // Unused arguments
-	fprintf(stderr, "[vulkan] Debug report from ObjectType: %i\nMessage: %s\n\n", objectType, pMessage);
+	(void)messageSeverity; (void)messageType; (void)pUserData;
+	fprintf(stderr, "[vulkan] Debug message: %s\n\n", pCallbackData->pMessage);
 	return VK_FALSE;
 }
 #endif // IMGUI_VULKAN_DEBUG_REPORT
@@ -81,8 +85,17 @@ static void SetupVulkan(const char** extensions, uint32_t extensions_count)
 
 	// Create Vulkan Instance
 	{
+		VkApplicationInfo app_info = {};
+		app_info.sType = VK_STRUCTURE_TYPE_APPLICATION_INFO;
+		app_info.pApplicationName = "RayTracer";
+		app_info.applicationVersion = VK_MAKE_API_VERSION(0, 1, 0, 0);
+		app_info.pEngineName = "Walnut";
+		app_info.engineVersion = VK_MAKE_API_VERSION(0, 1, 0, 0);
+		app_info.apiVersion = VK_API_VERSION_1_4;
+
 		VkInstanceCreateInfo create_info = {};
 		create_info.sType = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO;
+		create_info.pApplicationInfo = &app_info;
 		create_info.enabledExtensionCount = extensions_count;
 		create_info.ppEnabledExtensionNames = extensions;
 #ifdef IMGUI_VULKAN_DEBUG_REPORT
@@ -91,10 +104,10 @@ static void SetupVulkan(const char** extensions, uint32_t extensions_count)
 		create_info.enabledLayerCount = 1;
 		create_info.ppEnabledLayerNames = layers;
 
-		// Enable debug report extension (we need additional storage, so we duplicate the user array to add our new extension to it)
+		// Enable debug utils extension
 		const char** extensions_ext = (const char**)malloc(sizeof(const char*) * (extensions_count + 1));
 		memcpy(extensions_ext, extensions, extensions_count * sizeof(const char*));
-		extensions_ext[extensions_count] = "VK_EXT_debug_report";
+		extensions_ext[extensions_count] = VK_EXT_DEBUG_UTILS_EXTENSION_NAME;
 		create_info.enabledExtensionCount = extensions_count + 1;
 		create_info.ppEnabledExtensionNames = extensions_ext;
 
@@ -104,22 +117,24 @@ static void SetupVulkan(const char** extensions, uint32_t extensions_count)
 		free(extensions_ext);
 
 		// Get the function pointer (required for any extensions)
-		auto vkCreateDebugReportCallbackEXT = (PFN_vkCreateDebugReportCallbackEXT)vkGetInstanceProcAddr(g_Instance, "vkCreateDebugReportCallbackEXT");
-		IM_ASSERT(vkCreateDebugReportCallbackEXT != NULL);
-
-		// Setup the debug report callback
-		VkDebugReportCallbackCreateInfoEXT debug_report_ci = {};
-		debug_report_ci.sType = VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT;
-		debug_report_ci.flags = VK_DEBUG_REPORT_ERROR_BIT_EXT | VK_DEBUG_REPORT_WARNING_BIT_EXT | VK_DEBUG_REPORT_PERFORMANCE_WARNING_BIT_EXT;
-		debug_report_ci.pfnCallback = debug_report;
-		debug_report_ci.pUserData = NULL;
-		err = vkCreateDebugReportCallbackEXT(g_Instance, &debug_report_ci, g_Allocator, &g_DebugReport);
-		check_vk_result(err);
+		auto vkCreateDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(g_Instance, "vkCreateDebugUtilsMessengerEXT");
+		if (vkCreateDebugUtilsMessengerEXT != NULL)
+		{
+			// Setup the debug messenger callback
+			VkDebugUtilsMessengerCreateInfoEXT debug_messenger_ci = {};
+			debug_messenger_ci.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
+			debug_messenger_ci.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+			debug_messenger_ci.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT | VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+			debug_messenger_ci.pfnUserCallback = debug_callback;
+			debug_messenger_ci.pUserData = NULL;
+			err = vkCreateDebugUtilsMessengerEXT(g_Instance, &debug_messenger_ci, g_Allocator, &g_DebugMessenger);
+			check_vk_result(err);
+		}
 #else
 		// Create Vulkan Instance without any debug feature
 		err = vkCreateInstance(&create_info, g_Allocator, &g_Instance);
 		check_vk_result(err);
-		IM_UNUSED(g_DebugReport);
+		IM_UNUSED(g_DebugMessenger);
 #endif
 	}
 
@@ -134,20 +149,28 @@ static void SetupVulkan(const char** extensions, uint32_t extensions_count)
 		err = vkEnumeratePhysicalDevices(g_Instance, &gpu_count, gpus);
 		check_vk_result(err);
 
-		// If a number >1 of GPUs got reported, find discrete GPU if present, or use first one available. This covers
-		// most common cases (multi-gpu/integrated+dedicated graphics). Handling more complicated setups (multiple
-		// dedicated GPUs) is out of scope of this sample.
-		int use_gpu = 0;
+		// Prefer discrete GPU that supports Vulkan 1.4
+		int use_gpu = -1;
 		for (int i = 0; i < (int)gpu_count; i++)
 		{
 			VkPhysicalDeviceProperties properties;
 			vkGetPhysicalDeviceProperties(gpus[i], &properties);
-			if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+			if (properties.apiVersion >= VK_API_VERSION_1_4)
 			{
-				use_gpu = i;
-				break;
+				if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+				{
+					use_gpu = i;
+					break;
+				}
+				else if (use_gpu == -1)
+				{
+					use_gpu = i;
+				}
 			}
 		}
+
+		if (use_gpu == -1)
+			use_gpu = 0; // Fallback to first available device
 
 		g_PhysicalDevice = gpus[use_gpu];
 		free(gpus);
@@ -179,8 +202,23 @@ static void SetupVulkan(const char** extensions, uint32_t extensions_count)
 		queue_info[0].queueFamilyIndex = g_QueueFamily;
 		queue_info[0].queueCount = 1;
 		queue_info[0].pQueuePriorities = queue_priority;
+
+		VkPhysicalDeviceVulkan14Features features14 = {};
+		features14.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+
+		VkPhysicalDeviceVulkan13Features features13 = {};
+		features13.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+		features13.pNext = &features14;
+		features13.dynamicRendering = VK_TRUE;
+		features13.synchronization2 = VK_TRUE;
+
+		VkPhysicalDeviceFeatures2 features2 = {};
+		features2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+		features2.pNext = &features13;
+
 		VkDeviceCreateInfo create_info = {};
 		create_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
+		create_info.pNext = &features2;
 		create_info.queueCreateInfoCount = sizeof(queue_info) / sizeof(queue_info[0]);
 		create_info.pQueueCreateInfos = queue_info;
 		create_info.enabledExtensionCount = device_extension_count;
@@ -256,9 +294,10 @@ static void CleanupVulkan()
 	vkDestroyDescriptorPool(g_Device, g_DescriptorPool, g_Allocator);
 
 #ifdef IMGUI_VULKAN_DEBUG_REPORT
-	// Remove the debug report callback
-	auto vkDestroyDebugReportCallbackEXT = (PFN_vkDestroyDebugReportCallbackEXT)vkGetInstanceProcAddr(g_Instance, "vkDestroyDebugReportCallbackEXT");
-	vkDestroyDebugReportCallbackEXT(g_Instance, g_DebugReport, g_Allocator);
+	// Remove the debug messenger callback
+	auto vkDestroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(g_Instance, "vkDestroyDebugUtilsMessengerEXT");
+	if (vkDestroyDebugUtilsMessengerEXT && g_DebugMessenger != VK_NULL_HANDLE)
+		vkDestroyDebugUtilsMessengerEXT(g_Instance, g_DebugMessenger, g_Allocator);
 #endif // IMGUI_VULKAN_DEBUG_REPORT
 
 	vkDestroyDevice(g_Device, g_Allocator);
