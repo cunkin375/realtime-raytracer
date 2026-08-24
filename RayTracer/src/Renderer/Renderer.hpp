@@ -31,7 +31,7 @@ public:
 
 private:
     Settings settings_;
-    Backend active_backend_;
+    Backend active_backend_{ Backend::CPU };
     CPU_Backend cpu_;
     GPU_Backend gpu_;
 

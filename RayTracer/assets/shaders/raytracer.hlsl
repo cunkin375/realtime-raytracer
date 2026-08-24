@@ -50,16 +50,22 @@ uint PCG_Hash(uint input)
     return (word >> 22u) ^ word;
 }
 
+// does not keep 32 bits of entropy
+// float RandomUnitInterval(uint seed)
+// {
+//     const int IEEE_mantissa = 0x007FFFFF;
+//     const int IEEE_f32_one = 0x3F800000;
+//     seed = PCG_Hash(seed);
+//     // mask seed into floating-point mantissa and bitwise OR with 1.f
+//     uint result = (seed & IEEE_mantissa) | IEEE_f32_one;
+//     // treat as float and return in [0, 1) range
+//     return asfloat(result) - 1.f;
+// }
+
 float RandomUnitInterval(uint seed)
 {
-    const int IEEE_mantissa = 0x007fffff;
-    const int IEEE_one = 0x3f800000;
     seed = PCG_Hash(seed);
-    // mask seed into floating-point mantissa
-    uint result = (seed & IEEE_mantissa) | IEEE_one;
-    // treat as float and return in [0, 1) range
-    // subtraction of 1.0f is needed to include 0
-    return asfloat(result) - 1.0f;
+    return asfloat(result) / 0xFFFFFFFF;
 }
 
 

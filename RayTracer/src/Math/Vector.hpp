@@ -488,7 +488,7 @@ struct Math3D
     }
 
     static constexpr Derived ReflectFromSurfaceUnit(const Derived &incoming_vector,
-                                                      const Derived &surface_unit_vector)
+                                                    const Derived &surface_unit_vector)
     {
         assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) <= 1e-5
                && "Vector::ReflectFromSurfaceNormal requires normalized surface_unit_vector argument.");
@@ -504,8 +504,7 @@ struct Math3D
     }
 
     static constexpr Derived RefractFromSurfaceUnit(const Derived &uv_vector,
-                                                      const Derived &surface_unit_vector,
-                                                      double etai_over_etat)
+                                                    const Derived &surface_unit_vector, double etai_over_etat)
     {
         assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) < 1e-5
                && "Vector::RefractFromSurfaceNormal requires normalized surface_unit_vector argument.");

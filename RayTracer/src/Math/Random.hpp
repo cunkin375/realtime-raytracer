@@ -1,6 +1,8 @@
 #pragma once
 
 #include <concepts>
+#include <cstdint>
+#include <limits>
 #include <random>
 
 #include "Numbers.hpp"
@@ -76,6 +78,18 @@ public:
     {
         seed = PCG_Hash(seed);
         return static_cast<T>(seed) / static_cast<T>(std::numeric_limits<std::uint32_t>::max());
+    }
+
+    // probably closer to what an optimising compiler turns the normal function into
+    template <std::floating_point T>
+    static T FastUnitIntervalFoat(std::uint32_t &seed)
+    {
+        seed = PCG_Hash(seed);
+        std::uint64_t mantissa = static_cast<std::uint64_t>(seed) << 20;
+        std::uint64_t double_bits = 0x3FF0000000000000ULL | mantissa;
+        double baseline;
+        memcpy(&baseline, &double_bits, sizeof(double));
+        return (baseline - 1.0) * 1.00000000023283064365386962890625;
     }
 
     /* Generates a random number between 0 and 1 */
