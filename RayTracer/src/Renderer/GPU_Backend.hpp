@@ -12,6 +12,15 @@
 
 class GPU_Backend
 {
+public:
+    GPU_Backend();
+
+    void Render(const Camera &camera, const Scene &scene, u32 *image_data, fVector4 *accumulation_data);
+
+    void SetImageParameters(u32 width, u32 height, u32 frame_index_, bool is_fast_random_enabled);
+
+    bool ValidState() { return valid_state_; }
+
 private:
     struct Settings
     {
@@ -20,6 +29,27 @@ private:
         u32 frame_index;
         bool fast_random;
     };
+
+    struct GPU_Buffer
+    {
+        ::VkBuffer handle{ VK_NULL_HANDLE };
+        ::VkDeviceMemory memory{ VK_NULL_HANDLE };
+        ::VkDeviceSize size{ 0 };
+    };
+
+private:
+    bool CompileShaders(std::string_view shader_path);
+
+    void HotReloadShader();
+
+    void ResizeBuffers(u32 width, u32 height);
+
+    void WriteDescriptorSet();
+
+    u32 FindMemoryType(u32 type_filter, ::VkMemoryPropertyFlags properties);
+
+    GPU_Buffer AllocateBuffer(::VkDeviceSize size, ::VkBufferUsageFlags usage_flags,
+                              ::VkMemoryPropertyFlags memory_properties);
 
 private:
     Settings config_;
@@ -31,23 +61,19 @@ private:
 
     bool valid_state_{ false };
 
-private:
+    u32 current_pixel_count_;
+
+    GPU_Buffer ubo_camera_;
+    GPU_Buffer ssbo_spheres_;
+    GPU_Buffer ssbo_materials_;
+    GPU_Buffer ssbo_accumulation_;
+    GPU_Buffer ssbo_image_;
+
     ::VkDevice device_{ VK_NULL_HANDLE };
     ::VkShaderModule compute_shader_module_{ VK_NULL_HANDLE };
     ::VkDescriptorSetLayout descriptor_set_layout_{ VK_NULL_HANDLE };
+    ::VkDescriptorSet descriptor_set_{ VK_NULL_HANDLE };
+    ::VkDescriptorPool descriptor_pool_{ VK_NULL_HANDLE };
     ::VkPipelineLayout pipeline_layout_{ VK_NULL_HANDLE };
     ::VkPipeline compute_pipeline_{ VK_NULL_HANDLE };
-
-public:
-    GPU_Backend();
-
-    void Render(const Camera &camera, const Scene &scene, u32 *image_data, fVector4 *accumulation_data);
-
-    void SetImageParameters(u32 width, u32 height, u32 frame_index_, bool is_fast_random_enabled);
-
-    bool ValidState() { return valid_state_; }
-
-private:
-    bool CompileShaders(std::string_view shader_path);
-    void HotReloadShader();
 };

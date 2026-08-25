@@ -12,7 +12,7 @@
 CPU_Backend::CPU_Backend()
 {
 #if MULTI_THREAD
-    thread_count_ = std::thread::hardware_concurrency();
+    thread_count_ = std::thread::hardware_concurrency() - 2;
     threads_.reserve(thread_count_);
 #endif
 }
@@ -76,7 +76,6 @@ void CPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
 
 // Private Methods
 
-// NOTE: When transferring to Vulkan, GL_LaunchID will refer coordinates of a pixel
 fVector4 CPU_Backend::RayGen(u32 x, u32 y)
 {
     const auto &position = active_camera_->GetPosition();

@@ -192,7 +192,32 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
         valid_state_ = true;
 }
 
-void Render() {}
+void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_data,
+                         fVector4 *accumulation_data)
+{
+    // ::vkWaitForFences(device_, 1, const VkFence *pFences, VkBool32 waitAll,
+    //                   uint64_t timeout)::VkDeviceMemory memory;
+    // ::vkMapMemory(device_, memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags,
+    //               void **ppData)
+    //
+    // ::vkUnmapMemory(device_, VkDeviceMemory memory)
+    //
+    // ::vkBeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBeginInfo *pBeginInfo);
+    //
+    // ::vkCmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRenderingInfo)
+    //
+    // ::vkCmdBindDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
+    //                               VkPipelineLayout layout, uint32_t firstSet, uint32_t descriptorSetCount,
+    //                               const VkDescriptorSet *pDescriptorSets, uint32_t dynamicOffsetCount,
+    //                               const uint32_t *pDynamicOffsets);
+    //
+    // ::vkCmdDrawIndexed(VkCommandBuffer commandBuffer, uint32_t indexCount, uint32_t instanceCount,
+    //                    uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance);
+    //
+    // ::vkEndCommandBuffer(VkCommandBuffer commandBuffer);
+}
+
+// Private methods
 
 bool GPU_Backend::CompileShaders(std::string_view shader_path)
 {
@@ -247,3 +272,48 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
 }
 
 void GPU_Backend::HotReloadShader() {}
+
+u32 GPU_Backend::FindMemoryType(u32 type_filter, ::VkMemoryPropertyFlags properties)
+{
+    ::VkPhysicalDeviceMemoryProperties memory_properties;
+    ::vkGetPhysicalDeviceMemoryProperties(Walnut::Application::GetPhysicalDevice(), &memory_properties);
+
+    for (auto i{ 0u }; i < memory_properties.memoryTypeCount; ++i)
+    {
+        if ((type_filter & (1u << i))
+            && (memory_properties.memoryTypes[i].propertyFlags & properties) == properties)
+        {
+            return i;
+        }
+    }
+
+    Log::Error("FindMemoryType: No suitable memory type found");
+    return 0;
+}
+
+GPU_Backend::GPU_Buffer GPU_Backend::AllocateBuffer(::VkDeviceSize size, ::VkBufferUsageFlags usage_flags,
+                                                    ::VkMemoryPropertyFlags memory_properties)
+{
+    GPU_Buffer buffer;
+    buffer.size = size;
+    auto buffer_info = ::VkBufferCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .size = size,
+        .usage = usage_flags,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+    };
+    Check(::vkCreateBuffer(device_, &buffer_info, nullptr, &buffer.handle));
+
+    ::VkMemoryRequirements requirements;
+    ::vkGetBufferMemoryRequirements(device_, buffer.handle, &requirements);
+
+    auto allocate_info = ::VkMemoryAllocateInfo{
+        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = requirements.size,
+        .memoryTypeIndex = FindMemoryType(requirements.memoryTypeBits, memory_properties),
+    };
+    Check(::vkAllocateMemory(device_, &allocate_info, nullptr, &buffer.memory));
+    Check(::vkBindBufferMemory(device_, buffer.handle, buffer.memory, 0));
+
+    return buffer;
+}

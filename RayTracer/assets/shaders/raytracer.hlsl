@@ -107,6 +107,7 @@ HitRecord Miss(const Ray ray)
     return record;
 }
 
+// solves quadratic equation to determine if a ray has hit a sphere and which solution is nearest to ray.origin
 HitRecord TraceRay(const Ray ray)
 {
     int closest_sphere_index = -1;
