@@ -9,6 +9,7 @@
 #include "RayTracing/Ray.hpp"
 #include "Scene.hpp"
 #include "Util/Aliases.hpp"
+#include "Util/Log.hpp"
 
 // Public Methods
 
@@ -38,7 +39,6 @@ void Renderer::OnResize(u32 width, u32 height)
 
     delete[] accumulation_data_;
     accumulation_data_ = new fVector4[width * height];
-
 }
 
 void Renderer::Render(const Camera &camera, const Scene &scene)
@@ -47,15 +47,21 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
         std::memset(accumulation_data_, 0,
                     final_image_->GetWidth() * final_image_->GetHeight() * sizeof(fVector4));
 
-    cpu_.SetImageParameters(final_image_->GetWidth(), final_image_->GetHeight(), frame_index_,
-                            settings_.fast_random);
-
     // these Render methods write into image_data_ and accumulation_data_
     switch (active_backend_)
     {
-        case Backend::CPU: cpu_.Render(camera, scene, image_data_, accumulation_data_); break;
-        case Backend::GPU: break; // TODO: Implement GPU ray tracing
-        default: assert(false && "Unknown backend reached Renderer!");
+        case Backend::CPU:
+            cpu_.SetImageParameters(final_image_->GetWidth(), final_image_->GetHeight(), frame_index_,
+                                    settings_.fast_random);
+            cpu_.Render(camera, scene, image_data_, accumulation_data_);
+            break;
+        case Backend::GPU:
+            gpu_.SetImageParameters(final_image_->GetWidth(), final_image_->GetHeight(), frame_index_);
+            gpu_.Render(camera, scene, image_data_, accumulation_data_);
+            break;
+        default: 
+            Log::Error("Unknown backend reached Renderer!");
+            std::exit(-1);
     }
 
     final_image_->SetData(image_data_);

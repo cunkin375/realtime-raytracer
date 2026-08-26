@@ -17,7 +17,7 @@ public:
 
     void Render(const Camera &camera, const Scene &scene, u32 *image_data, fVector4 *accumulation_data);
 
-    void SetImageParameters(u32 width, u32 height, u32 frame_index_, bool is_fast_random_enabled);
+    void SetImageParameters(u32 width, u32 height, u32 frame_index_);
 
     bool ValidState() { return valid_state_; }
 
@@ -27,7 +27,6 @@ private:
         u32 image_width;
         u32 image_height;
         u32 frame_index;
-        bool fast_random;
     };
 
     struct GPU_Buffer

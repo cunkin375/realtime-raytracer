@@ -215,6 +215,15 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
         valid_state_ = true;
 }
 
+void GPU_Backend::SetImageParameters(u32 width, u32 height, u32 frame_index)
+{
+    config_ = Settings{
+        .image_width = width,
+        .image_height = height,
+        .frame_index = frame_index,
+    };
+}
+
 void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_data,
                          fVector4 *accumulation_data)
 {
@@ -238,6 +247,7 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
         meta.image_width = static_cast<f32>(config_.image_width);
         meta.frame_index = static_cast<f32>(config_.frame_index);
         meta.num_spheres = static_cast<u32>(scene.spheres.size());
+        ;
 
         void *pointer;
         ::vkMapMemory(device_, ubo_camera_.memory, 0, sizeof(GPU_MetaData), 0, &pointer);
@@ -301,8 +311,7 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
 
     // read accumulation_data back to reset when frame_index = 1
     {
-        const VkDeviceSize accumulation_bytes =
-            sizeof(fVector4) * config_.image_width * config_.image_height;
+        const VkDeviceSize accumulation_bytes = sizeof(fVector4) * config_.image_width * config_.image_height;
         void *pointer;
 
         ::vkMapMemory(device_, ssbo_accumulation_.memory, 0, accumulation_bytes, 0, &pointer);
