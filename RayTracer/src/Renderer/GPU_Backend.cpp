@@ -1,4 +1,5 @@
 #include "GPU_Backend.hpp"
+#include "Scene.hpp"
 
 #include <memory>
 #include <vulkan/vulkan.h>
@@ -99,8 +100,9 @@ enum class Binding : u32
     AccumulationDataSSBO,
     OutputImageSSBO,
 };
-
 constexpr auto operator*(Binding b) noexcept { return std::to_underlying(b); }
+
+using Begin = bool;
 
 } // namespace
 
@@ -183,6 +185,27 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
     Check(
         ::vkCreateComputePipelines(device_, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &compute_pipeline_));
 
+    auto pool_sizes = std::array<::VkDescriptorPoolSize, 2>{
+        ::VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
+        ::VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 4 },
+    };
+
+    auto pool_info = ::VkDescriptorPoolCreateInfo{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+        .maxSets = 1,
+        .poolSizeCount = static_cast<u32>(pool_sizes.size()),
+        .pPoolSizes = pool_sizes.data(),
+    };
+    Check(::vkCreateDescriptorPool(device_, &pool_info, nullptr, &descriptor_pool_));
+
+    auto allocation_info = ::VkDescriptorSetAllocateInfo{
+        .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+        .descriptorPool = descriptor_pool_,
+        .descriptorSetCount = 1,
+        .pSetLayouts = &descriptor_set_layout_,
+    };
+    Check(::vkAllocateDescriptorSets(device_, &allocation_info, &descriptor_set_));
+
     // NOTE: keep this at the bottom
     shader_watcher_ = std::make_unique<DirectoryWatcher>(
         Util::ResolvePath("RayTracer/assets/shaders/"),
@@ -195,27 +218,97 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
 void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_data,
                          fVector4 *accumulation_data)
 {
+    ResizeBuffersIfNeeded(config_.image_width, config_.image_height, scene);
 
-    // ::vkWaitForFences(device_, 1, const VkFence *pFences, VkBool32 waitAll,
-    //                   uint64_t timeout)::VkDeviceMemory memory;
-    // ::vkMapMemory(device_, memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags,
-    //               void **ppData)
-    //
-    // ::vkUnmapMemory(device_, VkDeviceMemory memory)
-    //
-    // ::vkBeginCommandBuffer(VkCommandBuffer commandBuffer, const VkCommandBufferBeginInfo *pBeginInfo);
-    //
-    // ::vkCmdBeginRendering(VkCommandBuffer commandBuffer, const VkRenderingInfo *pRenderingInfo)
-    //
-    // ::vkCmdBindDescriptorSets(VkCommandBuffer commandBuffer, VkPipelineBindPoint pipelineBindPoint,
-    //                               VkPipelineLayout layout, uint32_t firstSet, uint32_t descriptorSetCount,
-    //                               const VkDescriptorSet *pDescriptorSets, uint32_t dynamicOffsetCount,
-    //                               const uint32_t *pDynamicOffsets);
-    //
-    // ::vkCmdDrawIndexed(VkCommandBuffer commandBuffer, uint32_t indexCount, uint32_t instanceCount,
-    //                    uint32_t firstIndex, int32_t vertexOffset, uint32_t firstInstance);
-    //
-    // ::vkEndCommandBuffer(VkCommandBuffer commandBuffer);
+    {
+        const auto &position = camera.GetPosition();
+        const auto &direction = camera.GetDirection();
+        const auto &background = scene.background;
+
+        GPU_MetaData meta{};
+        meta.camera_position[0] = position.x;
+        meta.camera_position[1] = position.y;
+        meta.camera_position[2] = position.z;
+        meta.ray_direction[0] = direction.x;
+        meta.ray_direction[1] = direction.y;
+        meta.ray_direction[2] = direction.z;
+        meta.background[0] = background.x;
+        meta.background[1] = background.y;
+        meta.background[2] = background.z;
+        meta.image_width = static_cast<f32>(config_.image_width);
+        meta.frame_index = static_cast<f32>(config_.frame_index);
+        meta.num_spheres = static_cast<u32>(scene.spheres.size());
+
+        void *pointer;
+        ::vkMapMemory(device_, ubo_camera_.memory, 0, sizeof(GPU_MetaData), 0, &pointer);
+        std::memcpy(pointer, &meta, sizeof(GPU_MetaData));
+        ::vkUnmapMemory(device_, ubo_camera_.memory);
+    }
+
+    /* Upload Sphere Data */
+    {
+        void *pointer;
+        ::vkMapMemory(device_, ssbo_spheres_.memory, 0, ssbo_spheres_.size, 0, &pointer);
+        std::memcpy(pointer, scene.spheres.data(), ssbo_spheres_.size);
+        ::vkUnmapMemory(device_, ssbo_spheres_.memory);
+    }
+
+    /* Upload Material Data */
+    {
+        void *pointer;
+        ::vkMapMemory(device_, ssbo_materials_.memory, 0, ssbo_materials_.size, 0, &pointer);
+        std::memcpy(pointer, scene.materials.data(), ssbo_spheres_.size);
+        ::vkUnmapMemory(device_, ssbo_materials_.memory);
+    }
+
+    /* Upload Accumulation Buffer Data */
+    {
+        // synch host copy and GPU before dispatch
+        const VkDeviceSize accumulation_bytes = sizeof(fVector4) * config_.image_width * config_.image_height;
+        void *pointer;
+        ::vkMapMemory(device_, ssbo_accumulation_.memory, 0, accumulation_bytes, 0, &pointer);
+        std::memcpy(pointer, accumulation_data, accumulation_bytes);
+        ::vkUnmapMemory(device_, ssbo_accumulation_.memory);
+    }
+
+    /* Record and submit compuote command buffer */
+
+    ::VkCommandBuffer command = Walnut::Application::GetCommandBuffer(Begin{ true });
+
+    ::vkCmdBindPipeline(command, VK_PIPELINE_BIND_POINT_COMPUTE, compute_pipeline_);
+    ::vkCmdBindDescriptorSets(command, VK_PIPELINE_BIND_POINT_COMPUTE, pipeline_layout_, 0, 1,
+                              &descriptor_set_, 0, nullptr);
+
+    // must match
+    const u32 thread_groups_x = (config_.image_width + 7) / 8;
+    const u32 thread_groups_y = (config_.image_height + 7) / 8;
+    ::vkCmdDispatch(command, thread_groups_x, thread_groups_y, 1);
+
+    // end, submit, and sit on fence
+    Walnut::Application::FlushCommandBuffer(command);
+
+    // TODO: Code below should be removed once the GPU pipeline is better established
+
+    // read image_data back for SetData()
+    {
+        const VkDeviceSize image_bytes = sizeof(u32) * config_.image_width * config_.image_height;
+        void *pointer;
+
+        ::vkMapMemory(device_, ssbo_image_.memory, 0, image_bytes, 0, &pointer);
+        std::memcpy(image_data, pointer, image_bytes);
+        ::vkUnmapMemory(device_, ssbo_image_.memory);
+    }
+
+    // read accumulation_data back to reset when frame_index = 1
+    {
+        const VkDeviceSize accumulation_bytes =
+            sizeof(fVector4) * config_.image_width * config_.image_height;
+        void *pointer;
+
+        ::vkMapMemory(device_, ssbo_accumulation_.memory, 0, accumulation_bytes, 0, &pointer);
+        std::memcpy(accumulation_data, pointer, accumulation_bytes);
+        ::vkUnmapMemory(device_, ssbo_accumulation_.memory);
+    }
 }
 
 // Private methods
@@ -244,8 +337,12 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
         .Encoding = DXC_CP_UTF8,
     };
 
-    std::vector<LPCWSTR> arguments = { L"-spirv", L"-T",   L"cs_6_5",
-                                       L"-E",     L"main", L"-fspv-target-env=vulkan1.3" };
+    // Ccalar layout resolves a lot of alignment issues
+    // WARN: I am not dealing with manual memory alignment. It is stupid. If it causes problems migrate to
+    // Slang.
+    std::vector<LPCWSTR> arguments = {
+        L"-spirv", L"-T", L"cs_6_5", L"-E", L"main", L"-fspv-target-env=vulkan1.3", L"-fvk-use-scalar-layout"
+    };
 
     ComPtr<IDxcResult> result;
     compiler->Compile(&source_buffer, arguments.data(), static_cast<u32>(arguments.size()), nullptr,
@@ -292,6 +389,7 @@ u32 GPU_Backend::FindMemoryType(u32 type_filter, ::VkMemoryPropertyFlags propert
     return 0;
 }
 
+// allocates memory for a specific buffer
 GPU_Backend::GPU_Buffer GPU_Backend::AllocateBuffer(::VkDeviceSize size, ::VkBufferUsageFlags usage_flags,
                                                     ::VkMemoryPropertyFlags memory_properties)
 {
@@ -319,7 +417,9 @@ GPU_Backend::GPU_Buffer GPU_Backend::AllocateBuffer(::VkDeviceSize size, ::VkBuf
     return buffer;
 }
 
-void GPU_Backend::ResizeBuffers(u32 width, u32 height)
+// Reallocates memory for buffers
+// - currently written to handle small buffers
+void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scene)
 {
     const u32 pixel_count = width * height;
     if (pixel_count == current_pixel_count_)
@@ -340,8 +440,63 @@ void GPU_Backend::ResizeBuffers(u32 width, u32 height)
     destroy(ssbo_image_);
 
     // Map memory without manual cache flushing
-    // TODO: looking into how this affects performance
+    // NOTE: this might cause performance issues on hardware without shared RAM or BAR window, and if used
+    // with very large buffers
     constexpr auto HOST_VISIBLE = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
+    ubo_camera_ = AllocateBuffer(sizeof(GPU_MetaData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, HOST_VISIBLE);
+    ssbo_spheres_ = AllocateBuffer(sizeof(Sphere) * scene.spheres.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+                                   HOST_VISIBLE);
+    ssbo_materials_ = AllocateBuffer(sizeof(Material), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
+    ssbo_accumulation_ = AllocateBuffer(sizeof(fVector4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
+    ssbo_image_ = AllocateBuffer(sizeof(Material), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
 
+    current_pixel_count_ = pixel_count;
+
+    // rebind new VkBufferse
+    WriteDescriptorSet();
+}
+
+// Rebinds buffers to descriptor set
+void GPU_Backend::WriteDescriptorSet()
+{
+    auto ubo_info = ::VkDescriptorBufferInfo{ ubo_camera_.handle, 0, ubo_camera_.size };
+    auto spheres_info = ::VkDescriptorBufferInfo{ ssbo_spheres_.handle, 0, ssbo_spheres_.size };
+    auto materials_info = ::VkDescriptorBufferInfo{ ssbo_materials_.handle, 0, ssbo_materials_.size };
+    auto accumulation_info = ::VkDescriptorBufferInfo{ ssbo_accumulation_.handle, 0, ssbo_materials_.size };
+    auto image_info = ::VkDescriptorBufferInfo{ ssbo_image_.handle, 0, ssbo_image_.size };
+
+    auto writes = std::array<::VkWriteDescriptorSet, 5>{
+        ::VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                .dstSet = descriptor_set_,
+                                .dstBinding = 0,
+                                .descriptorCount = 1,
+                                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                .pBufferInfo = &ubo_info },
+        ::VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                .dstSet = descriptor_set_,
+                                .dstBinding = 1,
+                                .descriptorCount = 1,
+                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                .pBufferInfo = &spheres_info },
+        ::VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                .dstSet = descriptor_set_,
+                                .dstBinding = 2,
+                                .descriptorCount = 1,
+                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                .pBufferInfo = &materials_info },
+        ::VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                .dstSet = descriptor_set_,
+                                .dstBinding = 3,
+                                .descriptorCount = 1,
+                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                .pBufferInfo = &accumulation_info },
+        ::VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                                .dstSet = descriptor_set_,
+                                .dstBinding = 4,
+                                .descriptorCount = 1,
+                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                .pBufferInfo = &image_info },
+    };
+    ::vkUpdateDescriptorSets(device_, static_cast<u32>(writes.size()), writes.data(), 0, nullptr);
 }

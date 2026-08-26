@@ -23,6 +23,8 @@ struct Sphere
     i32 material_index{ 0 }; // ImGui works with ints
 };
 
+static_assert(sizeof(fVector2) == 8);
+
 struct Scene
 {
     std::vector<Sphere> spheres;

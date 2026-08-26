@@ -37,28 +37,23 @@ private:
         ::VkDeviceSize size{ 0 };
     };
 
-    // std140 alighment for HLSL
-    struct alignas(16) GPU_MetaData
+    // std140 UBO
+    struct GPU_MetaData
     {
         f32 camera_position[3];
-        f32 _pad0;
         f32 ray_direction[3];
-        f32 _pad1;
         f32 background[3];
         f32 image_width;
         f32 frame_index;
         u32 num_spheres;
-        f32 _pad2[2];
     };
-    static_assert(sizeof(GPU_MetaData) == 64,
-                  "GPU_MetaData struct must align with 64-bit HLSL buffer counterpart.");
 
 private:
     bool CompileShaders(std::string_view shader_path);
 
     void HotReloadShader();
 
-    void ResizeBuffers(u32 width, u32 height);
+    void ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scene);
 
     void WriteDescriptorSet();
 

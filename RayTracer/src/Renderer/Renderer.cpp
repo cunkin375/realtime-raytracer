@@ -7,6 +7,7 @@
 #include "Math/Vector.hpp"
 #include "RayTracing/ImageColor.hpp"
 #include "RayTracing/Ray.hpp"
+#include "Scene.hpp"
 #include "Util/Aliases.hpp"
 
 // Public Methods
@@ -37,6 +38,7 @@ void Renderer::OnResize(u32 width, u32 height)
 
     delete[] accumulation_data_;
     accumulation_data_ = new fVector4[width * height];
+
 }
 
 void Renderer::Render(const Camera &camera, const Scene &scene)
