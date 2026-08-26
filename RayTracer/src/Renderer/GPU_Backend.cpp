@@ -5,10 +5,10 @@
 
 // clang-format off
 /**
-| Getting HLSL to compile across Windows and Linux is really annoying, so everything here MUST stay in the
-| exact order that it is in. INITGUID is needed for Windows to properly used the Windows Runtiem Template
-| Library, which provides smart pointers for COM used by the DirectX Compiler (DXC). Using C++ smart pointers
-| will not work and return errors when ID_PPV_ARGS expands to __uuidof(**(ppType)), ID_PPV_ARGS_Helper(ppvType).
+ * Getting HLSL to compile across Windows and Linux is really annoying, so everything here MUST stay in the
+ * exact order that it is in. INITGUID is needed for Windows to properly used the Windows Runtiem Template
+ * Library, which provides smart pointers for COM used by the DirectX Compiler (DXC). Using C++ smart pointers
+ * will not work and return errors when ID_PPV_ARGS expands to __uuidof(**(ppType)), ID_PPV_ARGS_Helper(ppvType).
 */
 #define INITGUID
 #ifdef _WIN32
@@ -17,7 +17,7 @@
 #endif
 
 /**
-| GUID definitions for DXC interfaces. MinGW does not define these.
+ * GUID definitions for DXC interfaces. MinGW does not define these.
 */
 #ifdef __MINGW32__
 namespace MinGWHelper
@@ -108,7 +108,7 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
 {
     device_ = Walnut::Application::GetDevice();
 
-    // === Create descriptor set layout ===
+    /* Create descriptor set layout */
     auto layout = std::array<::VkDescriptorSetLayoutBinding, 5>{};
 
     layout[*Binding::CameraSettingsUBO] =
@@ -159,14 +159,14 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
 
     Check(::vkCreatePipelineLayout(device_, &pipeline_layout_info, nullptr, &pipeline_layout_));
 
-    // === Compile Shaders ===
+    /* Compile Shaders */
     if (false == CompileShaders("RayTracer/assets/shaders/raytracer.hlsl"))
     {
         Log::Error("Shaders failed to compile, using CPU renderer as fallback.");
         return;
     }
 
-    // === Create Compute Pipeline ===
+    /* Create Compute Pipeline */
     auto shader_stage_info = ::VkPipelineShaderStageCreateInfo{
         .sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage = VK_SHADER_STAGE_COMPUTE_BIT,
@@ -195,6 +195,7 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
 void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_data,
                          fVector4 *accumulation_data)
 {
+
     // ::vkWaitForFences(device_, 1, const VkFence *pFences, VkBool32 waitAll,
     //                   uint64_t timeout)::VkDeviceMemory memory;
     // ::vkMapMemory(device_, memory, VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags,
@@ -316,4 +317,31 @@ GPU_Backend::GPU_Buffer GPU_Backend::AllocateBuffer(::VkDeviceSize size, ::VkBuf
     Check(::vkBindBufferMemory(device_, buffer.handle, buffer.memory, 0));
 
     return buffer;
+}
+
+void GPU_Backend::ResizeBuffers(u32 width, u32 height)
+{
+    const u32 pixel_count = width * height;
+    if (pixel_count == current_pixel_count_)
+        return;
+
+    auto destroy = [&](GPU_Buffer &buffer)
+    {
+        if (buffer.handle)
+            ::vkDestroyBuffer(device_, buffer.handle, nullptr);
+        if (buffer.memory)
+            ::vkFreeMemory(device_, buffer.memory, nullptr);
+        buffer = {};
+    };
+    destroy(ubo_camera_);
+    destroy(ssbo_spheres_);
+    destroy(ssbo_materials_);
+    destroy(ssbo_accumulation_);
+    destroy(ssbo_image_);
+
+    // Map memory without manual cache flushing
+    // TODO: looking into how this affects performance
+    constexpr auto HOST_VISIBLE = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
+
 }
