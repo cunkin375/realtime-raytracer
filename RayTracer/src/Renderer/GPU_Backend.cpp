@@ -350,7 +350,7 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
     // WARN: I am not dealing with manual memory alignment. It is stupid. If it causes problems migrate to
     // Slang.
     std::vector<LPCWSTR> arguments = {
-        L"-spirv", L"-T", L"cs_6_5", L"-E", L"main", L"-fspv-target-env=vulkan1.3", L"-fvk-use-scalar-layout"
+        L"-spirv", L"-T", L"cs_6_5", L"-E", L"main", L"-fspv-target-env=vulkan1.3", L"-fvk-use-scalar-layout",
     };
 
     ComPtr<IDxcResult> result;

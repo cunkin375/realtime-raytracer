@@ -46,6 +46,17 @@ private:
         f32 frame_index;
         u32 num_spheres;
     };
+    static_assert(sizeof(GPU_MetaData) == 48);
+
+    static_assert(sizeof(Sphere) == 20);
+
+    static_assert(sizeof(Material) == 36);
+
+    // sick nasty tricks
+    // template<std::size_t> struct ShowSize;
+    // ShowSize<sizeof(GPU_MetaData)> gpu_metadata_size;
+    // ShowSize<sizeof(fVector4)> vec4_size;
+    // ShowSize<sizeof(fVector3)> vec3_size;
 
 private:
     bool CompileShaders(std::string_view shader_path);
