@@ -20,6 +20,7 @@ target_include_directories(unit_tests PRIVATE
 target_link_libraries(unit_tests PRIVATE
     gtest_main
     Walnut
+    $<$<CXX_COMPILER_ID:GNU>:stdc++exp>
 )
 
 gtest_discover_tests(unit_tests DISCOVERY_MODE PRE_TEST)
