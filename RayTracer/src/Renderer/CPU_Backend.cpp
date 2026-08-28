@@ -15,6 +15,7 @@ CPU_Backend::CPU_Backend()
     thread_count_ = std::thread::hardware_concurrency() - 2;
     threads_.reserve(thread_count_);
 #endif
+    config_ = {};
 }
 
 void CPU_Backend::SetImageParameters(u32 width, u32 height, u32 frame_index, bool is_fast_random_enabled)

@@ -229,6 +229,7 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
 {
     ResizeBuffersIfNeeded(config_.image_width, config_.image_height, scene);
 
+    /* Upload Metadata */
     {
         const auto &position = camera.GetPosition();
         const auto &direction = camera.GetDirection();
@@ -238,16 +239,17 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
         meta.camera_position[0] = position.x;
         meta.camera_position[1] = position.y;
         meta.camera_position[2] = position.z;
+        meta._pad0 = 0.f;
         meta.ray_direction[0] = direction.x;
         meta.ray_direction[1] = direction.y;
         meta.ray_direction[2] = direction.z;
+        meta._pad1 = 0.f;
         meta.background[0] = background.x;
         meta.background[1] = background.y;
         meta.background[2] = background.z;
         meta.image_width = static_cast<f32>(config_.image_width);
         meta.frame_index = static_cast<f32>(config_.frame_index);
         meta.num_spheres = static_cast<u32>(scene.spheres.size());
-        ;
 
         void *pointer;
         ::vkMapMemory(device_, ubo_camera_.memory, 0, sizeof(GPU_MetaData), 0, &pointer);
@@ -267,7 +269,7 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
     {
         void *pointer;
         ::vkMapMemory(device_, ssbo_materials_.memory, 0, ssbo_materials_.size, 0, &pointer);
-        std::memcpy(pointer, scene.materials.data(), ssbo_spheres_.size);
+        std::memcpy(pointer, scene.materials.data(), ssbo_materials_.size);
         ::vkUnmapMemory(device_, ssbo_materials_.memory);
     }
 
@@ -346,9 +348,6 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
         .Encoding = DXC_CP_UTF8,
     };
 
-    // Ccalar layout resolves a lot of alignment issues
-    // WARN: I am not dealing with manual memory alignment. It is stupid. If it causes problems migrate to
-    // Slang.
     std::vector<LPCWSTR> arguments = {
         L"-spirv", L"-T", L"cs_6_5", L"-E", L"main", L"-fspv-target-env=vulkan1.3", L"-fvk-use-scalar-layout",
     };
@@ -456,9 +455,11 @@ void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scen
     ubo_camera_ = AllocateBuffer(sizeof(GPU_MetaData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, HOST_VISIBLE);
     ssbo_spheres_ = AllocateBuffer(sizeof(Sphere) * scene.spheres.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                    HOST_VISIBLE);
-    ssbo_materials_ = AllocateBuffer(sizeof(Material), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
-    ssbo_accumulation_ = AllocateBuffer(sizeof(fVector4), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
-    ssbo_image_ = AllocateBuffer(sizeof(Material), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
+    ssbo_materials_ = AllocateBuffer(sizeof(Material) * scene.materials.size(),
+                                     VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
+    ssbo_accumulation_ =
+        AllocateBuffer(sizeof(fVector4) * pixel_count, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
+    ssbo_image_ = AllocateBuffer(sizeof(u32) * pixel_count, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
 
     current_pixel_count_ = pixel_count;
 
@@ -472,7 +473,8 @@ void GPU_Backend::WriteDescriptorSet()
     auto ubo_info = ::VkDescriptorBufferInfo{ ubo_camera_.handle, 0, ubo_camera_.size };
     auto spheres_info = ::VkDescriptorBufferInfo{ ssbo_spheres_.handle, 0, ssbo_spheres_.size };
     auto materials_info = ::VkDescriptorBufferInfo{ ssbo_materials_.handle, 0, ssbo_materials_.size };
-    auto accumulation_info = ::VkDescriptorBufferInfo{ ssbo_accumulation_.handle, 0, ssbo_materials_.size };
+    auto accumulation_info =
+        ::VkDescriptorBufferInfo{ ssbo_accumulation_.handle, 0, ssbo_accumulation_.size };
     auto image_info = ::VkDescriptorBufferInfo{ ssbo_image_.handle, 0, ssbo_image_.size };
 
     auto writes = std::array<::VkWriteDescriptorSet, 5>{

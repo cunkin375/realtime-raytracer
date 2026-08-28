@@ -1,11 +1,15 @@
+// std140 layout requires pads float3 to float4 size
+// pad vars added to reflect GPU_Metada struct in GPU_Backend.hpp
 struct Metadata
 {
     float3 camera_position;
+    float  _pad0;
     float3 ray_direction;
+    float  _pad1;
     float3 background;
-    float image_width;
-    float frame_index;
-    uint num_spheres;
+    float  image_width;
+    float  frame_index;
+    uint   num_spheres;
 };
 
 struct Sphere

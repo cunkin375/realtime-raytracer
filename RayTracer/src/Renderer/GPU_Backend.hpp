@@ -36,20 +36,20 @@ private:
         ::VkDeviceSize size{ 0 };
     };
 
-    // std140 UBO
+    // std140 UBO — float3 members must be padded to 16-byte boundaries
     struct GPU_MetaData
     {
         f32 camera_position[3];
+        f32 _pad0;          // pad to 16-byte boundary
         f32 ray_direction[3];
+        f32 _pad1;
         f32 background[3];
-        f32 image_width;
+        f32 image_width;    // naturally follows at offset 48
         f32 frame_index;
         u32 num_spheres;
     };
-    static_assert(sizeof(GPU_MetaData) == 48);
-
+    static_assert(sizeof(GPU_MetaData) == 56);
     static_assert(sizeof(Sphere) == 20);
-
     static_assert(sizeof(Material) == 36);
 
     // sick nasty tricks
