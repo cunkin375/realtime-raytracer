@@ -466,8 +466,16 @@ struct Vector<T, 2zu> : public VectorOperations<Vector<T, 2zu>, T, 2zu>
 
 /*** Specialization for N = 3 ***/
 
-// This struct adds 4 bytes to any children
-// I don't know why
+/**
+ * Because VectorOperations is already a struct that every vector inherits, adding this additional struct to
+ * any children causes that child to be padded for extra bytes. C++ requires every class or struct to have a
+ * unique address. This normally does not matter if a struct inherits from a single struct since Empty Base
+ * Optimization allows it to occupy 0 bytes in the child. Inheriting from 2 structs however, causes the cild
+ * to take on an additional byte, which is often padded for memory alignment. In the case of a 3D vector,
+ * inheriting from VectorOperations and Math3D causes it to be padded to 16 bytes instead of 12. This causes
+ * memory alignment bugs when including a 3D vector in any class or struct that has a GPU counterpart, which
+ * require the CPU counterpart to occupy the same number of bytes in memory.
+ */
 template <typename Derived, Number T>
 struct Math3D
 {
@@ -596,7 +604,7 @@ struct Vector<T, 3zu> : public VectorOperations<Vector<T, 3zu>, T, 3zu>
     }
 
     static constexpr Vector ReflectFromSurfaceUnit(const Vector &incoming_vector,
-                                                    const Vector &surface_unit_vector)
+                                                   const Vector &surface_unit_vector)
     {
         assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) <= 1e-5
                && "Vector::ReflectFromSurfaceNormal requires normalized surface_unit_vector argument.");
@@ -605,14 +613,14 @@ struct Vector<T, 3zu> : public VectorOperations<Vector<T, 3zu>, T, 3zu>
     }
 
     static constexpr Vector ReflectFromSurface(const Vector &incoming_vector,
-                                                const Vector &surface_normal_vector)
+                                               const Vector &surface_normal_vector)
     {
         return incoming_vector
                - 2 * Vector::DotProduct(incoming_vector, surface_normal_vector) * surface_normal_vector;
     }
 
-    static constexpr Vector RefractFromSurfaceUnit(const Vector &uv_vector,
-                                                    const Vector &surface_unit_vector, double etai_over_etat)
+    static constexpr Vector RefractFromSurfaceUnit(const Vector &uv_vector, const Vector &surface_unit_vector,
+                                                   double etai_over_etat)
     {
         assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) < 1e-5
                && "Vector::RefractFromSurfaceNormal requires normalized surface_unit_vector argument.");
@@ -624,8 +632,8 @@ struct Vector<T, 3zu> : public VectorOperations<Vector<T, 3zu>, T, 3zu>
         return refracted_out_perpendicular + refracted_out_parallel;
     }
 
-    static constexpr Vector RefractFromSurface(const Vector &uv_vector,
-                                                const Vector &surface_normal_vector, double etai_over_etat)
+    static constexpr Vector RefractFromSurface(const Vector &uv_vector, const Vector &surface_normal_vector,
+                                               double etai_over_etat)
     {
         auto cosine_theta = std::fmin(Vector::DotProduct(-uv_vector, surface_normal_vector), 1.0);
         auto refracted_out_perpendicular =
@@ -701,7 +709,7 @@ struct Color<T, 3zu> : public VectorOperations<Color<T, 3zu>, T, 3zu>
     }
 
     static constexpr Color ReflectFromSurfaceUnit(const Color &incoming_vector,
-                                                    const Color &surface_unit_vector)
+                                                  const Color &surface_unit_vector)
     {
         assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) <= 1e-5
                && "Vector::ReflectFromSurfaceNormal requires normalized surface_unit_vector argument.");
@@ -710,14 +718,14 @@ struct Color<T, 3zu> : public VectorOperations<Color<T, 3zu>, T, 3zu>
     }
 
     static constexpr Color ReflectFromSurface(const Color &incoming_vector,
-                                                const Color &surface_normal_vector)
+                                              const Color &surface_normal_vector)
     {
         return incoming_vector
                - 2 * Color::DotProduct(incoming_vector, surface_normal_vector) * surface_normal_vector;
     }
 
-    static constexpr Color RefractFromSurfaceUnit(const Color &uv_vector,
-                                                    const Color &surface_unit_vector, double etai_over_etat)
+    static constexpr Color RefractFromSurfaceUnit(const Color &uv_vector, const Color &surface_unit_vector,
+                                                  double etai_over_etat)
     {
         assert(std::abs(surface_unit_vector.MagnitudeSquared() - static_cast<T>(1)) < 1e-5
                && "Vector::RefractFromSurfaceNormal requires normalized surface_unit_vector argument.");
@@ -729,8 +737,8 @@ struct Color<T, 3zu> : public VectorOperations<Color<T, 3zu>, T, 3zu>
         return refracted_out_perpendicular + refracted_out_parallel;
     }
 
-    static constexpr Color RefractFromSurface(const Color &uv_vector,
-                                                const Color &surface_normal_vector, double etai_over_etat)
+    static constexpr Color RefractFromSurface(const Color &uv_vector, const Color &surface_normal_vector,
+                                              double etai_over_etat)
     {
         auto cosine_theta = std::fmin(Color::DotProduct(-uv_vector, surface_normal_vector), 1.0);
         auto refracted_out_perpendicular =
