@@ -78,6 +78,7 @@ float RandomUnitInterval(uint seed)
 {
     seed = PCG_Hash(seed);
     return asfloat(seed) / 0xFFFFFFFF;
+    // return (float)seed / 4294967295.0f;
 }
 
 float3 RandomUnitSphereVector(uint seed)
@@ -167,8 +168,8 @@ float4 RayGen(uint x, uint y)
 
     // ray bounces should be kept low
     // - the GPU does not like dynamic branching in a for loop
-    uint bounces = 8;
-    for (uint i = 0; i < 8; i++)
+    uint bounces = 1;
+    for (uint i = 0; i < bounces; i++)
     {
         seed += i;
 

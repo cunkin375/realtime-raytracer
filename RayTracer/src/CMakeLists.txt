@@ -1,4 +1,5 @@
 file(GLOB_RECURSE SOURCE_FILES  ./*.cpp)
+file(GLOB_RECURSE HEADER_FILES  ./*.hpp)
 
 if (NOT IS_DIRECTORY $ENV{VULKAN_SDK})
     message(WARNING "Vulkan SDK not detected, if installed set
@@ -10,7 +11,7 @@ endif()
 include_directories(SYSTEM $ENV{VULKAN_SDK}/include)
 find_package(Vulkan REQUIRED COMPONENTS dxc)
 
-add_executable(RayTracer ${SOURCE_FILES})
+add_executable(RayTracer ${SOURCE_FILES} ${HEADER_FILES})
 
 target_compile_options(RayTracer PRIVATE
     $<$<CXX_COMPILER_ID:Clang>:-fexperimental-library>
@@ -35,8 +36,6 @@ target_link_libraries(RayTracer PRIVATE
     $<$<CXX_COMPILER_ID:Clang>:-fexperimental-library>
     $<$<CXX_COMPILER_ID:GNU>:stdc++exp>
 )
-
-
 
 set_target_properties(RayTracer PROPERTIES
     BUILD_WITH_INSTALL_RPATH TRUE

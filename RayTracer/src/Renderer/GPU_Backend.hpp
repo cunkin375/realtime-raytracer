@@ -14,6 +14,7 @@ class GPU_Backend
 {
 public:
     GPU_Backend();
+    ~GPU_Backend();
 
     void Render(const Camera &camera, const Scene &scene, u32 *image_data, fVector4 *accumulation_data);
 
@@ -37,7 +38,7 @@ private:
     };
 
     // std140 UBO float3 members must be padded to 16-byte boundaries
-    struct GPU_MetaData
+    struct alignas(16) GPU_MetaData
     {
         f32 camera_position[3];
         f32 _pad0;
@@ -47,10 +48,12 @@ private:
         f32 image_width;
         f32 frame_index;
         u32 num_spheres;
+        f32 _pad2[2];
     };
-    static_assert(sizeof(GPU_MetaData) == 56);
-    static_assert(sizeof(Sphere) == 20);
-    static_assert(sizeof(Material) == 36);
+
+    static_assert(sizeof(GPU_MetaData) == 64);
+    static_assert(sizeof(Sphere) == 32);
+    static_assert(sizeof(Material) == 48);
 
     // sick nasty tricks
     // template<std::size_t> struct ShowSize;
@@ -84,7 +87,7 @@ private:
 
     u32 current_pixel_count_;
 
-    GPU_Buffer ubo_camera_;
+    GPU_Buffer ubo_meta_;
     GPU_Buffer ssbo_spheres_;
     GPU_Buffer ssbo_materials_;
     GPU_Buffer ssbo_accumulation_;

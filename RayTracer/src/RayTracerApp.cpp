@@ -1,8 +1,8 @@
 #include "imgui.h"
 
+#include <filesystem>
 #include <limits>
 #include <ranges>
-#include <filesystem>
 
 #include "Camera.hpp"
 #include "Renderer/Renderer.hpp"
@@ -37,7 +37,7 @@ private:
     f32 last_render_time_{ 0.f };
 
 public:
-    RayTracerLayer() : camera_(FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f })
+    RayTracerLayer() : camera_{ FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f } }
     {
         if (!std::filesystem::exists("imgui.ini"))
         {
@@ -115,8 +115,14 @@ public:
         {
             ImGui::PushID(id);
 
-            if (ImGui::Checkbox("Metallic", &material.metallic)
-                || ImGui::ColorEdit3("Albedo", Math::ValuePointer(material.albedo))
+            bool is_metallic = material.metallic != 0;
+            if (ImGui::Checkbox("Metallic", &is_metallic))
+            {
+                material.metallic = is_metallic ? 1 : 0;
+                reset_frame_index = true;
+            }
+
+            if (ImGui::ColorEdit3("Albedo", Math::ValuePointer(material.albedo))
                 || ImGui::DragFloat("Roughness", &material.roughness, 0.01f, 0.f, 1.f)
                 || ImGui::ColorEdit3("Emission Color", Math::ValuePointer(material.emission_color))
                 || ImGui::DragFloat("Emission Power", &material.emission_power, 0.01f, 0.f,
@@ -183,8 +189,7 @@ private:
 
 Walnut::Application *Walnut::CreateApplication(int argc, char **argv)
 {
-    Walnut::ApplicationSpecification spec;
-    spec.Name = "Realtime Ray Tracer";
+    Walnut::ApplicationSpecification spec{ .Name = "Realtime Ray Tracer", .EnableDebugInfo = true };
 
     Walnut::Application *app = new Walnut::Application(spec);
     app->PushLayer<RayTracerLayer>();

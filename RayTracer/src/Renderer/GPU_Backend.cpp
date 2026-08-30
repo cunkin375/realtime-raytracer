@@ -215,6 +215,34 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
         valid_state_ = true;
 }
 
+GPU_Backend::~GPU_Backend()
+{
+    auto destroy = [&](GPU_Buffer &buffer)
+    {
+        if (buffer.handle)
+            ::vkDestroyBuffer(device_, buffer.handle, nullptr);
+        if (buffer.memory)
+            ::vkFreeMemory(device_, buffer.memory, nullptr);
+        buffer = {};
+    };
+    destroy(ubo_meta_);
+    destroy(ssbo_spheres_);
+    destroy(ssbo_materials_);
+    destroy(ssbo_accumulation_);
+    destroy(ssbo_image_);
+
+    if (descriptor_pool_)
+        ::vkDestroyDescriptorPool(device_, descriptor_pool_, nullptr);
+    if (descriptor_set_layout_)
+        ::vkDestroyDescriptorSetLayout(device_, descriptor_set_layout_, nullptr);
+    if (pipeline_layout_)
+        ::vkDestroyPipelineLayout(device_, pipeline_layout_, nullptr);
+    if (compute_pipeline_)
+        ::vkDestroyPipeline(device_, compute_pipeline_, nullptr);
+    if (compute_shader_module_)
+        ::vkDestroyShaderModule(device_, compute_shader_module_, nullptr);
+}
+
 void GPU_Backend::SetImageParameters(u32 width, u32 height, u32 frame_index)
 {
     config_ = Settings{
@@ -252,9 +280,9 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
         meta.num_spheres = static_cast<u32>(scene.spheres.size());
 
         void *pointer;
-        ::vkMapMemory(device_, ubo_camera_.memory, 0, sizeof(GPU_MetaData), 0, &pointer);
+        ::vkMapMemory(device_, ubo_meta_.memory, 0, sizeof(GPU_MetaData), 0, &pointer);
         std::memcpy(pointer, &meta, sizeof(GPU_MetaData));
-        ::vkUnmapMemory(device_, ubo_camera_.memory);
+        ::vkUnmapMemory(device_, ubo_meta_.memory);
     }
 
     /* Upload Sphere Data */
@@ -349,7 +377,15 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
     };
 
     std::vector<LPCWSTR> arguments = {
-        L"-spirv", L"-T", L"cs_6_5", L"-E", L"main", L"-fspv-target-env=vulkan1.3", L"-fvk-use-scalar-layout",
+        L"-spirv",
+        L"-T",
+        L"cs_6_5",
+        L"-E",
+        L"main",
+        L"-fspv-target-env=vulkan1.3",
+        /* debug flags */
+        // L"-fspv-debug=vulkan-with-source",
+        // L"-Zi",
     };
 
     ComPtr<IDxcResult> result;
@@ -441,7 +477,7 @@ void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scen
             ::vkFreeMemory(device_, buffer.memory, nullptr);
         buffer = {};
     };
-    destroy(ubo_camera_);
+    destroy(ubo_meta_);
     destroy(ssbo_spheres_);
     destroy(ssbo_materials_);
     destroy(ssbo_accumulation_);
@@ -452,13 +488,14 @@ void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scen
     // with very large buffers
     constexpr auto HOST_VISIBLE = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
-    ubo_camera_ = AllocateBuffer(sizeof(GPU_MetaData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, HOST_VISIBLE);
+    ubo_meta_ = AllocateBuffer(sizeof(GPU_MetaData), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT, HOST_VISIBLE);
     ssbo_spheres_ = AllocateBuffer(sizeof(Sphere) * scene.spheres.size(), VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
                                    HOST_VISIBLE);
     ssbo_materials_ = AllocateBuffer(sizeof(Material) * scene.materials.size(),
                                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
     ssbo_accumulation_ =
         AllocateBuffer(sizeof(fVector4) * pixel_count, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
+
     ssbo_image_ = AllocateBuffer(sizeof(u32) * pixel_count, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
 
     current_pixel_count_ = pixel_count;
@@ -470,44 +507,43 @@ void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scen
 // Rebinds buffers to descriptor set
 void GPU_Backend::WriteDescriptorSet()
 {
-    auto ubo_info = ::VkDescriptorBufferInfo{ ubo_camera_.handle, 0, ubo_camera_.size };
-    auto spheres_info = ::VkDescriptorBufferInfo{ ssbo_spheres_.handle, 0, ssbo_spheres_.size };
-    auto materials_info = ::VkDescriptorBufferInfo{ ssbo_materials_.handle, 0, ssbo_materials_.size };
-    auto accumulation_info =
-        ::VkDescriptorBufferInfo{ ssbo_accumulation_.handle, 0, ssbo_accumulation_.size };
-    auto image_info = ::VkDescriptorBufferInfo{ ssbo_image_.handle, 0, ssbo_image_.size };
+    VkDescriptorBufferInfo ubo_info{ ubo_meta_.handle, 0, ubo_meta_.size };
+    VkDescriptorBufferInfo spheres_info{ ssbo_spheres_.handle, 0, ssbo_spheres_.size };
+    VkDescriptorBufferInfo materials_info{ ssbo_materials_.handle, 0, ssbo_materials_.size };
+    VkDescriptorBufferInfo accumulation_info{ ssbo_accumulation_.handle, 0, ssbo_accumulation_.size };
+    VkDescriptorBufferInfo image_info{ ssbo_image_.handle, 0, ssbo_image_.size };
 
     auto writes = std::array<::VkWriteDescriptorSet, 5>{
-        ::VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                .dstSet = descriptor_set_,
-                                .dstBinding = 0,
-                                .descriptorCount = 1,
-                                .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                .pBufferInfo = &ubo_info },
-        ::VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                .dstSet = descriptor_set_,
-                                .dstBinding = 1,
-                                .descriptorCount = 1,
-                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                .pBufferInfo = &spheres_info },
-        ::VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                .dstSet = descriptor_set_,
-                                .dstBinding = 2,
-                                .descriptorCount = 1,
-                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                .pBufferInfo = &materials_info },
-        ::VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                .dstSet = descriptor_set_,
-                                .dstBinding = 3,
-                                .descriptorCount = 1,
-                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                .pBufferInfo = &accumulation_info },
-        ::VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-                                .dstSet = descriptor_set_,
-                                .dstBinding = 4,
-                                .descriptorCount = 1,
-                                .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                .pBufferInfo = &image_info },
+        VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                              .dstSet = descriptor_set_,
+                              .dstBinding = 0,
+                              .descriptorCount = 1,
+                              .descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                              .pBufferInfo = &ubo_info },
+        VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                              .dstSet = descriptor_set_,
+                              .dstBinding = 1,
+                              .descriptorCount = 1,
+                              .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                              .pBufferInfo = &spheres_info },
+        VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                              .dstSet = descriptor_set_,
+                              .dstBinding = 2,
+                              .descriptorCount = 1,
+                              .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                              .pBufferInfo = &materials_info },
+        VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                              .dstSet = descriptor_set_,
+                              .dstBinding = 3,
+                              .descriptorCount = 1,
+                              .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                              .pBufferInfo = &accumulation_info },
+        VkWriteDescriptorSet{ .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                              .dstSet = descriptor_set_,
+                              .dstBinding = 4,
+                              .descriptorCount = 1,
+                              .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                              .pBufferInfo = &image_info },
     };
     ::vkUpdateDescriptorSets(device_, static_cast<u32>(writes.size()), writes.data(), 0, nullptr);
 }

@@ -5,18 +5,18 @@
 #include "Math/Vector.hpp"
 #include "Util/Aliases.hpp"
 
-struct Material
+struct alignas(16) Material
 {
     fVector3 albedo{ 1.f };
-    fVector3 emission_color{ 0.f };
     f32 roughness{ 1.f };
+    fVector3 emission_color{ 0.f };
     f32 emission_power{ 0.f };
-    bool metallic{ false };
+    i32 metallic{ 0 };
 
     fVector3 GetEmmission() const { return emission_color * emission_power; }
 };
 
-struct Sphere
+struct alignas(16) Sphere
 {
     fVector3 position{ 0.f, 0.f, 0.f };
     f32 radius = 0.5f;

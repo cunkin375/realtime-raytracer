@@ -39,6 +39,7 @@ private:
 
 public:
     CPU_Backend();
+    ~CPU_Backend() = default;
 
     void Render(const Camera &camera, const Scene &scene, u32 *image_data, fVector4 *accumulation_data);
 

@@ -29,3 +29,4 @@ build_ninja
 build_vs
 CMakeSettings.json
 .clangd
+.cache/neocmakelsp

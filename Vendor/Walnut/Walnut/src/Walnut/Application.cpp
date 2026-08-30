@@ -57,6 +57,8 @@ static uint32_t s_CurrentFrameIndex = 0;
 
 static Walnut::Application* s_Instance = nullptr;
 
+static std::vector<const char *> g_ValidationLayers = { "VK_LAYER_KHRONOS_validation" };
+
 void check_vk_result(VkResult err)
 {
 	if (err == 0)
@@ -79,7 +81,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback(
 }
 #endif // IMGUI_VULKAN_DEBUG_REPORT
 
-static void SetupVulkan(const char** extensions, uint32_t extensions_count)
+static void SetupVulkan(const char** extensions, uint32_t extensions_count, bool enable_validation_layers)
 {
 	VkResult err;
 
@@ -98,6 +100,17 @@ static void SetupVulkan(const char** extensions, uint32_t extensions_count)
 		create_info.pApplicationInfo = &app_info;
 		create_info.enabledExtensionCount = extensions_count;
 		create_info.ppEnabledExtensionNames = extensions;
+
+		if (enable_validation_layers)
+		{
+            create_info.enabledLayerCount = static_cast<uint32_t>(g_ValidationLayers.size());
+            create_info.ppEnabledLayerNames = g_ValidationLayers.data();
+        }
+        else
+        {
+            create_info.enabledLayerCount = 0;
+		}
+
 #ifdef IMGUI_VULKAN_DEBUG_REPORT
 		// Enabling validation layers
 		const char* layers[] = { "VK_LAYER_KHRONOS_validation" };
@@ -223,6 +236,7 @@ static void SetupVulkan(const char** extensions, uint32_t extensions_count)
 		create_info.pQueueCreateInfos = queue_info;
 		create_info.enabledExtensionCount = device_extension_count;
 		create_info.ppEnabledExtensionNames = device_extensions;
+
 		err = vkCreateDevice(g_PhysicalDevice, &create_info, g_Allocator, &g_Device);
 		check_vk_result(err);
 		vkGetDeviceQueue(g_Device, g_QueueFamily, 0, &g_Queue);
@@ -467,7 +481,7 @@ namespace Walnut {
 		}
 		uint32_t extensions_count = 0;
 		const char** extensions = glfwGetRequiredInstanceExtensions(&extensions_count);
-		SetupVulkan(extensions, extensions_count);
+		SetupVulkan(extensions, extensions_count, m_Specification.EnableDebugInfo);
 
 		// Create Window Surface
 		VkSurfaceKHR surface;
