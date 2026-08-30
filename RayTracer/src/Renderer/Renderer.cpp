@@ -13,6 +13,12 @@
 
 // Public Methods
 
+Renderer::~Renderer()
+{
+    delete[] image_data_;
+    delete[] accumulation_data_;
+}
+
 void Renderer::OnUpdate(f32 timestamp)
 {
     if (!gpu_.ValidState())

@@ -31,7 +31,7 @@ public:
 
 private:
     Settings settings_;
-    Backend active_backend_{ Backend::CPU };
+    Backend active_backend_{ Backend::GPU };
     CPU_Backend cpu_;
     GPU_Backend gpu_;
 
@@ -44,6 +44,7 @@ private:
 
 public:
     Renderer() = default;
+    ~Renderer();
 
     void OnUpdate(f32 timestamp);
 
