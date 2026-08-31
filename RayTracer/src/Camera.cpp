@@ -122,6 +122,7 @@ void Camera::RecalculateRayDirections()
 {
     ray_directions_cache_.resize(viewport_width_ * viewport_height_);
 
+#if MULTI_THREAD // TODO: idk implement this for fun
     for (u32 y = 0; y < viewport_height_; y++)
     {
         for (u32 x = 0; x < viewport_width_; x++)
@@ -130,9 +131,26 @@ void Camera::RecalculateRayDirections()
             coord = coord * 2.0f - 1.0f; // -1 -> 1
 
             glm::vec4 target = inverse_projection_ * glm::vec4(coord.x, coord.y, 1, 1);
+            auto test0 = glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0);
             glm::vec3 rayDirection = glm::vec3(
-                inverse_view_ * glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0)); // World space
+                inverse_view_ * test0); // World space
             ray_directions_cache_[x + y * viewport_width_] = rayDirection;
         }
     }
+#else
+    for (u32 y = 0; y < viewport_height_; y++)
+    {
+        for (u32 x = 0; x < viewport_width_; x++)
+        {
+            glm::vec2 coord = { (f32)x / (f32)viewport_width_, (f32)y / (f32)viewport_height_ };
+            coord = coord * 2.0f - 1.0f; // -1 -> 1
+
+            glm::vec4 target = inverse_projection_ * glm::vec4(coord.x, coord.y, 1, 1);
+            auto test0 = glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0);
+            glm::vec3 rayDirection = glm::vec3(
+                inverse_view_ * test0); // World space
+            ray_directions_cache_[x + y * viewport_width_] = rayDirection;
+        }
+    }
+#endif
 }

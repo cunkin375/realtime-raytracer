@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan.h>
 
+#include <glm/glm.hpp>
+
 #include "Camera.hpp"
 #include "Scene.hpp"
 
@@ -42,16 +44,18 @@ private:
     {
         f32 camera_position[3];
         f32 _pad0;
-        f32 ray_direction[3];
-        f32 _pad1;
+        glm::mat4x4 camera_inverse_view;
+        glm::mat4x4 camera_inverse_projection;
         f32 background[3];
         f32 image_width;
+        f32 image_height;
         f32 frame_index;
         u32 num_spheres;
         f32 _pad2[2];
     };
 
-    static_assert(sizeof(GPU_MetaData) == 64);
+    static_assert(sizeof(GPU_MetaData) == 192);
+    static_assert(sizeof(glm::mat4x4) == 64);
     static_assert(sizeof(Sphere) == 32);
     static_assert(sizeof(Material) == 48);
 
@@ -79,9 +83,6 @@ private:
     Settings config_;
 
     std::unique_ptr<DirectoryWatcher> shader_watcher_{ nullptr };
-
-    const Scene *active_scene_{ nullptr };
-    const Camera *active_camera_{ nullptr };
 
     bool valid_state_{ false };
 

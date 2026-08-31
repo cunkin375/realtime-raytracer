@@ -4,10 +4,11 @@ struct Metadata
 {
     float3 camera_position;
     float  _pad0;
-    float3 ray_direction;
-    float  _pad1;
+    column_major float4x4 camera_inverse_view;
+    column_major float4x4 camera_inverse_projection;
     float3 background;
     float  image_width;
+    float  image_height;
     float  frame_index;
     uint   num_spheres;
 };
@@ -133,7 +134,7 @@ HitRecord TraceRay(const Ray ray)
         if (discriminant < 0.f)
             continue;
 
-        float t[] = { -b - sqrt(discriminant) / (2.f * a), (-b * sqrt(discriminant)) / (2.f * a) };
+        float t[] = { -b - sqrt(discriminant) / (2.f * a), (-b + sqrt(discriminant)) / (2.f * a) };
 
         float closest_t = min(t[0], t[1]);
 
@@ -151,12 +152,26 @@ HitRecord TraceRay(const Ray ray)
 
 }
 
+float3 CalculateRayDirection(float x, float y)
+{
+    float2 coord = float2(x / meta_buffer.image_width, y / meta_buffer.image_height);
+    coord = coord * 2.f - 1.f;
+
+    float4 target = mul(meta_buffer.camera_inverse_projection, float4(coord.x, coord.y, 1.f, 1.f));
+
+    // convert projected position to 3D (divide by w), then transform by inverse view
+    float3 ndc = normalize(target.xyz / target.w);
+    float4 world_direction = mul(meta_buffer.camera_inverse_view, float4(ndc, 0.f));
+
+    return normalize(world_direction.xyz);
+}
+
 // Generates a random vector with sampled color information
 float4 RayGen(uint x, uint y)
 {
     Ray ray;
     ray.origin = meta_buffer.camera_position;
-    ray.direction = meta_buffer.ray_direction;
+    ray.direction = CalculateRayDirection(x, y);
 
     // a ray's light starts at 0 and accumulates light from light sources
     float3 light = float3(0.f, 0.f, 0.f);
@@ -230,4 +245,5 @@ void main(uint3 id : SV_DispatchThreadID)
     accumulated_color = clamp(accumulated_color, 0.f, 1.f);
     image_data[x + y * meta_buffer.image_width] = ConvertToRGBA(accumulated_color);
 }
+
 

@@ -260,22 +260,22 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
     /* Upload Metadata */
     {
         const auto &position = camera.GetPosition();
-        const auto &direction = camera.GetDirection();
         const auto &background = scene.background;
+        const auto &camera_inverse_view = camera.GetInverseView();
+        const auto &camera_inverse_projection = camera.GetInverseProjection();
 
         GPU_MetaData meta{};
         meta.camera_position[0] = position.x;
         meta.camera_position[1] = position.y;
         meta.camera_position[2] = position.z;
         meta._pad0 = 0.f;
-        meta.ray_direction[0] = direction.x;
-        meta.ray_direction[1] = direction.y;
-        meta.ray_direction[2] = direction.z;
-        meta._pad1 = 0.f;
+        meta.camera_inverse_view = camera_inverse_view;
+        meta.camera_inverse_projection = camera_inverse_projection;
         meta.background[0] = background.x;
         meta.background[1] = background.y;
         meta.background[2] = background.z;
         meta.image_width = static_cast<f32>(config_.image_width);
+        meta.image_width = static_cast<f32>(config_.image_height);
         meta.frame_index = static_cast<f32>(config_.frame_index);
         meta.num_spheres = static_cast<u32>(scene.spheres.size());
 
@@ -384,8 +384,8 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
         L"main",
         L"-fspv-target-env=vulkan1.3",
         /* debug flags */
-        // L"-fspv-debug=vulkan-with-source",
-        // L"-Zi",
+        L"-fspv-debug=vulkan-with-source",
+        L"-Zi",
     };
 
     ComPtr<IDxcResult> result;
