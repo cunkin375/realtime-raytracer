@@ -4,8 +4,8 @@ struct Metadata
 {
     float3 camera_position;
     float  _pad0;
-    column_major float4x4 camera_inverse_view;
-    column_major float4x4 camera_inverse_projection;
+    float4x4 camera_inverse_view;
+    float4x4 camera_inverse_projection;
     float3 background;
     float  image_width;
     float  image_height;
@@ -63,26 +63,14 @@ uint PCG_Hash(uint input)
     return (word >> 22u) ^ word;
 }
 
-/* does not keep 32 bits of entropy */
-// float RandomUnitInterval(uint seed)
-// {
-//     const int IEEE_mantissa = 0x007FFFFF;
-//     const int IEEE_f32_one = 0x3F800000;
-//     seed = PCG_Hash(seed);
-//     // mask seed into floating-point mantissa and bitwise OR with 1.f
-//     uint result = (seed & IEEE_mantissa) | IEEE_f32_one;
-//     // treat as float and return in [0, 1) range
-//     return asfloat(result) - 1.f;
-// }
-
-float RandomUnitInterval(uint seed)
+float RandomUnitInterval(inout uint seed)
 {
     seed = PCG_Hash(seed);
-    return asfloat(seed) / 0xFFFFFFFF;
-    // return (float)seed / 4294967295.0f;
+    return (float)seed / 4294967295.f;
+    // return (float)seed / 0xFFFFFFFF; // might be causing problems
 }
 
-float3 RandomUnitSphereVector(uint seed)
+float3 RandomUnitSphereVector(inout uint seed)
 {
     float x = RandomUnitInterval(seed);
     float y = RandomUnitInterval(seed);
@@ -134,11 +122,11 @@ HitRecord TraceRay(const Ray ray)
         if (discriminant < 0.f)
             continue;
 
-        float t[] = { -b - sqrt(discriminant) / (2.f * a), (-b + sqrt(discriminant)) / (2.f * a) };
+        float t[] = { (-b - sqrt(discriminant)) / (2.f * a), (-b + sqrt(discriminant)) / (2.f * a) };
 
         float closest_t = min(t[0], t[1]);
 
-        if (closest_t > 0.0f && closest_t < hit_distance)
+        if (closest_t > 0.f && closest_t < hit_distance)
         {
             hit_distance = closest_t;
             closest_sphere_index = i;
@@ -180,18 +168,18 @@ float4 RayGen(uint x, uint y)
     // together, light and color_contribution are implemented to support shadows through difussed lighting
 
     uint seed = x + y * meta_buffer.image_width;
+    seed ^= (uint)meta_buffer.frame_index * 719393u;
 
     // ray bounces should be kept low
-    // - the GPU does not like dynamic branching in a for loop
-    uint bounces = 1;
+    // the GPU does not like dynamic branching in a for loop
+    uint bounces = 8;
     for (uint i = 0; i < bounces; i++)
     {
-        seed += i;
 
         HitRecord record = TraceRay(ray);
         if (record.hit_distance < 0.f)
         {
-            light += meta_buffer.background;
+            light += meta_buffer.background * color_contribution;
             break;
         }
 
@@ -213,8 +201,7 @@ float4 RayGen(uint x, uint y)
         else
         {
             ray.direction = normalize(
-                record.world_normal + material.roughness * RandomUnitInterval(seed));
-
+                record.world_normal + material.roughness * RandomUnitSphereVector(seed));
         }
     }
 
@@ -234,8 +221,16 @@ uint ConvertToRGBA(float4 color)
 [numthreads(8, 8, 1)]
 void main(uint3 id : SV_DispatchThreadID)
 {
+    float4 error_magenta = float4(1, 0, 1, 1);
+
     uint x = id.x;
     uint y = id.y;
+
+    // keep ray tracing to pixels within the actual image
+    // this also prevents stray pixels to the left of the viewport
+    if (x >= meta_buffer.image_width || y >= meta_buffer.image_height)
+        return;
+
     float4 pixel_color = RayGen(x, y);
     accumulation_data[x + y * meta_buffer.image_width] += pixel_color;
 

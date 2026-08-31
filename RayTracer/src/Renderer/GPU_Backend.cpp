@@ -275,7 +275,7 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
         meta.background[1] = background.y;
         meta.background[2] = background.z;
         meta.image_width = static_cast<f32>(config_.image_width);
-        meta.image_width = static_cast<f32>(config_.image_height);
+        meta.image_height = static_cast<f32>(config_.image_height);
         meta.frame_index = static_cast<f32>(config_.frame_index);
         meta.num_spheres = static_cast<u32>(scene.spheres.size());
 

@@ -26,7 +26,7 @@ public:
     enum class Backend
     {
         CPU,
-        GPU
+        GPU,
     };
 
 private:
@@ -47,11 +47,10 @@ public:
     ~Renderer();
 
     void OnUpdate(f32 timestamp);
-
-    void Render(const Camera &camera, const Scene &scene);
     void OnResize(u32 width, u32 height);
 
-    void SetBackend(Renderer::Backend new_backend) { active_backend_ = new_backend; }
+    void Render(const Camera &camera, const Scene &scene);
+    void SetBackend(i32 incoming_backend);
 
     std::shared_ptr<Walnut::Image> GetFinalImage() const noexcept { return final_image_; }
 

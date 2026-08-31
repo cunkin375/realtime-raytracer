@@ -160,6 +160,12 @@ public:
 
         ImGui::Checkbox("Accumulate", &renderer_.GetSettings().accumulate);
         ImGui::Checkbox("Fast Random", &renderer_.GetSettings().fast_random);
+
+        static const char *renderer_backends[] = { "CPU", "GPU" };
+        static i32 current_backend{ 0 };
+        if (ImGui::Combo("Renderer", &current_backend, renderer_backends, IM_ARRAYSIZE(renderer_backends)))
+            renderer_.SetBackend(current_backend);
+
         if (ImGui::Button("Reset"))
             renderer_.ResetFrameIndex();
 

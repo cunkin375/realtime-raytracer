@@ -19,6 +19,16 @@ Renderer::~Renderer()
     delete[] accumulation_data_;
 }
 
+void Renderer::SetBackend(i32 incoming_backend)
+{
+    switch (incoming_backend)
+    {
+        case 0: active_backend_ = Backend::CPU; break;
+        case 1: active_backend_ = Backend::GPU; break;
+        default: Log::Error("Unknown backend reached Renderer!"); std::exit(-1);
+    }
+}
+
 void Renderer::OnUpdate(f32 timestamp)
 {
     if (!gpu_.ValidState())
@@ -65,9 +75,7 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
             gpu_.SetImageParameters(final_image_->GetWidth(), final_image_->GetHeight(), frame_index_);
             gpu_.Render(camera, scene, image_data_, accumulation_data_);
             break;
-        default: 
-            Log::Error("Unknown backend reached Renderer!");
-            std::exit(-1);
+        default: Log::Error("Unknown backend reached Renderer!"); std::exit(-1);
     }
 
     final_image_->SetData(image_data_);
