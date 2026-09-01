@@ -17,7 +17,7 @@ public:
     GPU_Backend();
     ~GPU_Backend();
 
-    void Render(const Camera &camera, const Scene &scene, u32 *image_data);
+    void Render(const Camera &camera, const Scene &scene);
 
     void SetImageParameters(u32 width, u32 height, u32 frame_index_);
 

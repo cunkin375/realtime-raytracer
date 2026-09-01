@@ -328,7 +328,6 @@ static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
 	VkResult err;
 
 	VkSemaphore image_acquired_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].ImageAcquiredSemaphore;
-	VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
 	err = vkAcquireNextImageKHR(g_Device, wd->Swapchain, UINT64_MAX, image_acquired_semaphore, VK_NULL_HANDLE, &wd->FrameIndex);
 	if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR)
 	{
@@ -336,6 +335,10 @@ static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
 		return;
 	}
 	check_vk_result(err);
+
+	// index render_complete by acquired image, vkAcquireNextImageKHR only returns an image
+	// whose prior presentation is complete, so its semaphore is guaranteed free
+	VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->FrameIndex].RenderCompleteSemaphore;
 
 	s_CurrentFrameIndex = (s_CurrentFrameIndex + 1) % g_MainWindowData.ImageCount;
 
@@ -412,7 +415,8 @@ static void FramePresent(ImGui_ImplVulkanH_Window* wd)
 {
 	if (g_SwapChainRebuild)
 		return;
-	VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
+	// Use FrameIndex (acquired image) to match the semaphore signaled in FrameRender
+	VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->FrameIndex].RenderCompleteSemaphore;
 	VkPresentInfoKHR info = {};
 	info.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
 	info.waitSemaphoreCount = 1;
@@ -429,6 +433,7 @@ static void FramePresent(ImGui_ImplVulkanH_Window* wd)
 	check_vk_result(err);
 	wd->SemaphoreIndex = (wd->SemaphoreIndex + 1) % wd->ImageCount; // Now we can use the next set of semaphores
 }
+
 
 static void glfw_error_callback(int error, const char* description)
 {

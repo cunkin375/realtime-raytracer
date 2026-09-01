@@ -228,7 +228,6 @@ void main(uint3 id : SV_DispatchThreadID)
 
     accumulated_color = clamp(accumulated_color, 0.f, 1.f);
     image_data[uint2(x, y)] = accumulated_color;
-
 }
 
 

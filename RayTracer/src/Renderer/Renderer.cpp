@@ -74,7 +74,7 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
             break;
         case Backend::GPU:
             gpu_.SetImageParameters(final_image_->GetWidth(), final_image_->GetHeight(), frame_index_);
-            gpu_.Render(camera, scene, image_data_);
+            gpu_.Render(camera, scene);
             break;
         default: Log::Error("Unknown backend reached Renderer!"); std::exit(-1);
     }

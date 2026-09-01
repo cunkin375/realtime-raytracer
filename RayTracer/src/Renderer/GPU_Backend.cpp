@@ -107,6 +107,8 @@ using Begin = bool;
 
 } // namespace
 
+// --- Public Methods ---------------------------------------------------------------------------------------
+
 GPU_Backend::GPU_Backend() : valid_state_{ false }
 {
     device_ = Walnut::Application::GetDevice();
@@ -232,6 +234,15 @@ GPU_Backend::~GPU_Backend()
     destroy(ssbo_materials_);
     destroy(ssbo_accumulation_);
 
+    if (shared_sampler_)
+        ::vkDestroySampler(device_, shared_sampler_, nullptr);
+    if (shared_image_view_)
+        ::vkDestroyImageView(device_, shared_image_view_, nullptr);
+    if (shared_image_)
+        ::vkDestroyImage(device_, shared_image_, nullptr);
+    if (shared_image_memory_)
+        ::vkFreeMemory(device_, shared_image_memory_, nullptr);
+
     if (descriptor_pool_)
         ::vkDestroyDescriptorPool(device_, descriptor_pool_, nullptr);
     if (descriptor_set_layout_)
@@ -253,7 +264,7 @@ void GPU_Backend::SetImageParameters(u32 width, u32 height, u32 frame_index)
     };
 }
 
-void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_data)
+void GPU_Backend::Render(const Camera &camera, const Scene &scene)
 {
     ResizeBuffersIfNeeded(config_.image_width, config_.image_height, scene);
 
@@ -360,7 +371,7 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene, u32 *image_da
     Walnut::Application::FlushCommandBuffer(command);
 }
 
-// Private methods
+// --- Private Methods --------------------------------------------------------------------------------------
 
 bool GPU_Backend::CompileShaders(std::string_view shader_path)
 {
@@ -439,7 +450,7 @@ u32 GPU_Backend::FindMemoryType(u32 type_filter, ::VkMemoryPropertyFlags propert
     return 0;
 }
 
-// allocates memory for a specific buffer
+// Allocates memory for a specific buffer
 GPU_Backend::GPU_Buffer GPU_Backend::AllocateBuffer(::VkDeviceSize size, ::VkBufferUsageFlags usage_flags,
                                                     ::VkMemoryPropertyFlags memory_properties)
 {
@@ -486,21 +497,97 @@ void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scen
     destroy(ssbo_materials_);
     destroy(ssbo_accumulation_);
 
-    // Create VkImage
-    VkImageCreateInfo image_info{
+    // Destroy old shared image resources
+    if (shared_image_view_)
+        ::vkDestroyImageView(device_, shared_image_view_, nullptr);
+    if (shared_image_)
+        ::vkDestroyImage(device_, shared_image_, nullptr);
+    if (shared_image_memory_)
+        ::vkFreeMemory(device_, shared_image_memory_, nullptr);
+    if (shared_sampler_)
+        ::vkDestroySampler(device_, shared_sampler_, nullptr);
+    shared_image_        = VK_NULL_HANDLE;
+    shared_image_view_   = VK_NULL_HANDLE;
+    shared_image_memory_ = VK_NULL_HANDLE;
+    shared_sampler_      = VK_NULL_HANDLE;
+
+    // Create image (STORAGE for compute write, SAMPLED for ImGui fragment read)
+    auto image_info = ::VkImageCreateInfo{
         .sType         = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .imageType     = VK_IMAGE_TYPE_2D,
-        .format        = VK_FORMAT_R8G8B8A8_UNORM,
+        .format        = VK_FORMAT_R32G32B32A32_SFLOAT,
         .extent        = { width, height, 1 },
         .mipLevels     = 1,
         .arrayLayers   = 1,
         .samples       = VK_SAMPLE_COUNT_1_BIT,
         .tiling        = VK_IMAGE_TILING_OPTIMAL,
         .usage         = VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_SAMPLED_BIT,
+        .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
         .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
     };
     Check(::vkCreateImage(device_, &image_info, nullptr, &shared_image_));
 
+    // Allocate and bind DEVICE_LOCAL memory for the image
+    ::VkMemoryRequirements image_mem_requirements;
+    ::vkGetImageMemoryRequirements(device_, shared_image_, &image_mem_requirements);
+    auto image_alloc_info = ::VkMemoryAllocateInfo{
+        .sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+        .allocationSize = image_mem_requirements.size,
+        .memoryTypeIndex =
+            FindMemoryType(image_mem_requirements.memoryTypeBits, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT),
+    };
+    Check(::vkAllocateMemory(device_, &image_alloc_info, nullptr, &shared_image_memory_));
+    Check(::vkBindImageMemory(device_, shared_image_, shared_image_memory_, 0));
+
+    // Create ImageView
+    auto view_info = ::VkImageViewCreateInfo{
+        .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+        .image            = shared_image_,
+        .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+        .format           = VK_FORMAT_R32G32B32A32_SFLOAT,
+        .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+    };
+    Check(::vkCreateImageView(device_, &view_info, nullptr, &shared_image_view_));
+
+    // Create Sampler
+    auto sampler_info = ::VkSamplerCreateInfo{
+        .sType         = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO,
+        .magFilter     = VK_FILTER_LINEAR,
+        .minFilter     = VK_FILTER_LINEAR,
+        .mipmapMode    = VK_SAMPLER_MIPMAP_MODE_LINEAR,
+        .addressModeU  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeV  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .addressModeW  = VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE,
+        .maxAnisotropy = 1.0f,
+    };
+    Check(::vkCreateSampler(device_, &sampler_info, nullptr, &shared_sampler_));
+
+    // Transition image from UNDEFINED to SHADER_READ_ONLY_OPTIMAL
+    // This is the initial state for ImGui sampling
+    // The compute pre-barrier will transition it to GENERAL before each dispatch
+    {
+        auto command      = Walnut::Application::GetCommandBuffer(Begin{ true });
+        auto init_barrier = ::VkImageMemoryBarrier2{
+            .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+            .srcStageMask     = VK_PIPELINE_STAGE_2_NONE,
+            .srcAccessMask    = VK_ACCESS_2_NONE,
+            .dstStageMask     = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+            .dstAccessMask    = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+            .oldLayout        = VK_IMAGE_LAYOUT_UNDEFINED,
+            .newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+            .image            = shared_image_,
+            .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+        };
+        auto init_dep = ::VkDependencyInfo{
+            .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+            .imageMemoryBarrierCount = 1,
+            .pImageMemoryBarriers    = &init_barrier,
+        };
+        ::vkCmdPipelineBarrier2(command, &init_dep);
+        Walnut::Application::FlushCommandBuffer(command);
+    }
+
+    // Register with ImGui for sampling
     imgui_descriptor_ = ImGui_ImplVulkan_AddTexture(shared_sampler_, shared_image_view_,
                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
@@ -517,12 +604,13 @@ void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scen
                                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
 
     // Allocate device local buffers
-    ssbo_accumulation_ = AllocateBuffer(sizeof(fVector4) * pixel_count, VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
+    ssbo_accumulation_ = AllocateBuffer(sizeof(fVector4) * pixel_count,
+                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
                                         VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
 
     current_pixel_count_ = pixel_count;
 
-    // rebind new VkBufferse
+    // rebind new VkBuffers
     WriteDescriptorSet();
 }
 

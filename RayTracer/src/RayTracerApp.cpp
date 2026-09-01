@@ -20,9 +20,9 @@
 namespace
 {
 
-using FOV = f32;
+using FOV       = f32;
 using NearPlane = f32;
-using FarPlane = f32;
+using FarPlane  = f32;
 
 } // namespace
 
@@ -30,11 +30,11 @@ class RayTracerLayer : public Walnut::Layer
 {
 private:
     Renderer renderer_{};
-    Camera camera_;
-    Scene scene_;
-    u32 viewport_width_{ 0 };
-    u32 viewport_height_{ 0 };
-    f32 last_render_time_{ 0.f };
+    Camera   camera_;
+    Scene    scene_;
+    u32      viewport_width_{ 0 };
+    u32      viewport_height_{ 0 };
+    f32      last_render_time_{ 0.f };
 
 public:
     RayTracerLayer() : camera_{ FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f } }
@@ -44,17 +44,17 @@ public:
             ImGui::LoadIniSettingsFromDisk("DefaultLayout.ini");
         }
 
-        auto &pink_sphere = scene_.materials.emplace_back();
-        pink_sphere.albedo = fVector3{ 1.f, 0.f, 1.f };
+        auto &pink_sphere     = scene_.materials.emplace_back();
+        pink_sphere.albedo    = fVector3{ 1.f, 0.f, 1.f };
         pink_sphere.roughness = 1.00f;
 
-        auto &yellow_sphere = scene_.materials.emplace_back();
-        yellow_sphere.albedo = fVector3{ 1.f, 1.0f, 0.0f };
+        auto &yellow_sphere     = scene_.materials.emplace_back();
+        yellow_sphere.albedo    = fVector3{ 1.f, 1.0f, 0.0f };
         yellow_sphere.roughness = 0.05f;
 
-        auto &orange_light = scene_.materials.emplace_back();
-        orange_light.albedo = { 0.8f, 0.5f, 0.2f };
-        orange_light.roughness = 0.05f;
+        auto &orange_light          = scene_.materials.emplace_back();
+        orange_light.albedo         = { 0.8f, 0.5f, 0.2f };
+        orange_light.roughness      = 0.05f;
         orange_light.emission_color = orange_light.albedo;
         orange_light.emission_power = 2.f;
 
@@ -141,7 +141,7 @@ public:
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
         ImGui::Begin("Viewport");
 
-        viewport_width_ = ImGui::GetContentRegionAvail().x;
+        viewport_width_  = ImGui::GetContentRegionAvail().x;
         viewport_height_ = ImGui::GetContentRegionAvail().y;
 
         // TODO: this is kind of weird at the moment, might clean up later
@@ -163,7 +163,7 @@ public:
 
         // BUG: This currently lets you pick a backend in an invalid state, which causes a crash
         static const char *renderer_backends[] = { "CPU", "GPU" };
-        static i32 current_backend{ 0 };
+        static i32         current_backend{ 0 };
         if (ImGui::Combo("Renderer", &current_backend, renderer_backends, IM_ARRAYSIZE(renderer_backends)))
             renderer_.SetBackend(current_backend);
 
