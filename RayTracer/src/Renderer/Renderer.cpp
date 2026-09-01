@@ -24,7 +24,7 @@ void Renderer::SetBackend(i32 incoming_backend)
     switch (incoming_backend)
     {
         case 0: active_backend_ = Backend::CPU; break;
-        case 1: active_backend_ = Backend::GPU; break;
+        case 1: active_backend_ = gpu_.ValidState() ? Backend::GPU : Backend::CPU; break;
         default: Log::Error("Unknown backend reached Renderer!"); std::exit(-1);
     }
 }
@@ -70,18 +70,26 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
             cpu_.SetImageParameters(final_image_->GetWidth(), final_image_->GetHeight(), frame_index_,
                                     settings_.fast_random);
             cpu_.Render(camera, scene, image_data_, accumulation_data_);
+            final_image_->SetData(image_data_);
             break;
         case Backend::GPU:
             gpu_.SetImageParameters(final_image_->GetWidth(), final_image_->GetHeight(), frame_index_);
-            gpu_.Render(camera, scene, image_data_, accumulation_data_);
+            gpu_.Render(camera, scene, image_data_);
             break;
         default: Log::Error("Unknown backend reached Renderer!"); std::exit(-1);
     }
-
-    final_image_->SetData(image_data_);
 
     if (settings_.accumulate)
         frame_index_++;
     else
         frame_index_ = 1;
+}
+
+VkDescriptorSet Renderer::GetDescriptorSet()
+{
+    switch (active_backend_)
+    {
+        case Backend::CPU: return final_image_->GetDescriptorSet();
+        case Backend::GPU: return gpu_.GetDescriptorSet();
+    }
 }

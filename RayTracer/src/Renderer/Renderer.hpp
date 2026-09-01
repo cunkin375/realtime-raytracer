@@ -53,6 +53,7 @@ public:
     void SetBackend(i32 incoming_backend);
 
     std::shared_ptr<Walnut::Image> GetFinalImage() const noexcept { return final_image_; }
+    VkDescriptorSet GetDescriptorSet();
 
     void ResetFrameIndex() { frame_index_ = 1; }
 

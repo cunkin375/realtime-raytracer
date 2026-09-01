@@ -50,10 +50,8 @@ struct Ray
 [[vk::binding(0, 0)]] ConstantBuffer<Metadata> meta_buffer : register(b0, space0);
 [[vk::binding(1, 0)]] StructuredBuffer<Sphere> spheres : register(t0, space0);
 [[vk::binding(2, 0)]] StructuredBuffer<Material> materials : register(t1, space0);
-// - these are likely temporary
-// - image_data should ideally not be linked with CPU at this stage
 [[vk::binding(3, 0)]] RWStructuredBuffer<float4> accumulation_data : register(u0, space0);
-[[vk::binding(4, 0)]] RWStructuredBuffer<uint> image_data : register(u1, space0);
+[[vk::binding(4, 0)]] RWTexture2D<float4> image_data : register(u1, space0);
 
 // Returns a random seed between 0 and 1
 uint PCG_Hash(uint input)
@@ -208,15 +206,6 @@ float4 RayGen(uint x, uint y)
     return float4(light.r, light.g, light.b, 1.f);
 }
 
-uint ConvertToRGBA(float4 color)
-{
-    uint r = uint(color.r * 255.f);
-    uint g = uint(color.g * 255.f);
-    uint b = uint(color.b * 255.f);
-    uint a = uint(color.a * 255.f);
-    return (a << 24) | (b << 16) | (g << 8) | r;
-}
-
 [shader("compute")]
 [numthreads(8, 8, 1)]
 void main(uint3 id : SV_DispatchThreadID)
@@ -227,7 +216,7 @@ void main(uint3 id : SV_DispatchThreadID)
     uint y = id.y;
 
     // keep ray tracing to pixels within the actual image
-    // this also prevents stray pixels to the left of the viewport
+    // prevents stray pixels to the left of the viewport
     if (x >= meta_buffer.image_width || y >= meta_buffer.image_height)
         return;
 
@@ -238,7 +227,8 @@ void main(uint3 id : SV_DispatchThreadID)
     accumulated_color = accumulated_color / meta_buffer.frame_index;
 
     accumulated_color = clamp(accumulated_color, 0.f, 1.f);
-    image_data[x + y * meta_buffer.image_width] = ConvertToRGBA(accumulated_color);
+    image_data[uint2(x, y)] = accumulated_color;
+
 }
 
 

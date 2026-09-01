@@ -144,10 +144,10 @@ public:
         viewport_width_ = ImGui::GetContentRegionAvail().x;
         viewport_height_ = ImGui::GetContentRegionAvail().y;
 
-        auto image = renderer_.GetFinalImage();
-        if (image)
+        // TODO: this is kind of weird at the moment, might clean up later
+        if (auto image = renderer_.GetFinalImage(); image != nullptr)
         {
-            ImGui::Image(image->GetDescriptorSet(),
+            ImGui::Image(renderer_.GetDescriptorSet(),
                          { static_cast<f32>(image->GetWidth()), static_cast<f32>(image->GetHeight()) },
                          ImVec2(0, 1), ImVec2(1, 0));
         }
@@ -161,6 +161,7 @@ public:
         ImGui::Checkbox("Accumulate", &renderer_.GetSettings().accumulate);
         ImGui::Checkbox("Fast Random", &renderer_.GetSettings().fast_random);
 
+        // BUG: This currently lets you pick a backend in an invalid state, which causes a crash
         static const char *renderer_backends[] = { "CPU", "GPU" };
         static i32 current_backend{ 0 };
         if (ImGui::Combo("Renderer", &current_backend, renderer_backends, IM_ARRAYSIZE(renderer_backends)))
