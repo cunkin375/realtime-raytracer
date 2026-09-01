@@ -1,17 +1,38 @@
 Language: Cpp
-Cpp11BracedListStyle: false
 BasedOnStyle: LLVM
+
+Cpp11BracedListStyle: false
+
 ColumnLimit: 110
+
 IndentWidth: 4
 IndentAccessModifiers: false
 IndentCaseLabels: true
+
 TabWidth: 4
 UseTab: Never
-AccessModifierOffset: -4 # keep this equal to IndentWidth
+
+AccessModifierOffset: -4                  # Keep this equal to IndentWidth
+AlignAfterOpenBracket: 'true'             # Align parameters after an open bracket
+AlignConsecutiveAssignments: 'true'       # Align consecutive assignments
+AlignConsecutiveDeclarations: 'true'      # Align consecutive variable declarations
+
+# AlignConsecutiveDeclarations:
+#   Enabled: true
+#   AcrossEmptyLines: false                 # Do not align across blank lines
+#   AcrossComments: true                    # Keep alignment intact even if there are inline comments
+#   AlignCompound: true                     # Align complex types / brace initializers
+#   PadOperators: true                      # Pad and align operators
+
+AlignOperands: 'true'                     # Align operands in expressions
+AlignTrailingComments: 'true'             # Align trailing comments to the same column
+
 BreakBeforeBraces: Allman
 BreakBeforeBinaryOperators: NonAssignment
-NamespaceIndentation: Inner
 BreakTemplateDeclarations: Yes
+
+NamespaceIndentation: Inner
+
 AllowShortCaseLabelsOnASingleLine: true
 AllowShortIfStatementsOnASingleLine: Never
 AllowShortBlocksOnASingleLine: Empty
