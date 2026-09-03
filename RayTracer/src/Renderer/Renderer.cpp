@@ -25,7 +25,7 @@ void Renderer::SetBackend(i32 incoming_backend)
     {
         case 0: active_backend_ = Backend::CPU; break;
         case 1: active_backend_ = gpu_.ValidState() ? Backend::GPU : Backend::CPU; break;
-        default: Log::Error("Unknown backend reached Renderer!"); std::exit(-1);
+        default: Log::Fatal("Unknown backend reached Renderer!"); std::exit(-1);
     }
 }
 

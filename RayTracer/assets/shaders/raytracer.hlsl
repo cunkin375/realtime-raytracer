@@ -23,10 +23,12 @@ struct Sphere
 struct Material
 {
     float3 albedo;
-    float3 emission_color;
     float roughness;
+    float3 emission_color;
     float emission_power;
     bool metallic;
+    float3 _pad;
+
     float3 GetEmission() { return emission_color * emission_power; }
 };
 
@@ -54,6 +56,7 @@ struct Ray
 [[vk::binding(4, 0)]] RWTexture2D<float4> image_data : register(u1, space0);
 
 // Returns a random seed between 0 and 1
+// source: https://www.reedbeta.com/blog/hash-functions-for-gpu-rendering/
 uint PCG_Hash(uint input)
 {
     uint state = input * 747796405u + 289133643u;
@@ -64,15 +67,14 @@ uint PCG_Hash(uint input)
 float RandomUnitInterval(inout uint seed)
 {
     seed = PCG_Hash(seed);
-    return (float)seed / 4294967295.f;
-    // return (float)seed / 0xFFFFFFFF; // might be causing problems
+    return (float)seed / (float)0xFFFFFFFF; // might be causing problems
 }
 
 float3 RandomUnitSphereVector(inout uint seed)
 {
-    float x = RandomUnitInterval(seed);
-    float y = RandomUnitInterval(seed);
-    float z = RandomUnitInterval(seed);
+    float x = RandomUnitInterval(seed) * 2.f - 1.f;
+    float y = RandomUnitInterval(seed) * 2.f - 1.f;
+    float z = RandomUnitInterval(seed) * 2.f - 1.f;
     return normalize(float3(x, y, z));
 }
 
@@ -85,7 +87,7 @@ HitRecord ClosestHit(const Ray ray, float hit_distance, int object_index)
     Sphere closest_sphere = spheres[object_index];
 
     float3 origin = ray.origin - closest_sphere.position;
-    record.world_position = origin * ray.direction * hit_distance;
+    record.world_position = origin + ray.direction * hit_distance;
     record.world_normal = normalize(record.world_position);
 
     record.world_position += closest_sphere.position;
@@ -173,6 +175,7 @@ float4 RayGen(uint x, uint y)
     uint bounces = 8;
     for (uint i = 0; i < bounces; i++)
     {
+        seed += i;
 
         HitRecord record = TraceRay(ray);
         if (record.hit_distance < 0.f)

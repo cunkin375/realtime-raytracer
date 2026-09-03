@@ -83,7 +83,7 @@ public:
 
     // probably closer to what an optimising compiler turns the normal function into
     template <std::floating_point T>
-    static T FastUnitIntervalFoat(std::uint32_t &seed)
+    static T FastUnitIntervalFloat(std::uint32_t &seed)
     {
         seed = PCG_Hash(seed);
         std::uint64_t mantissa = static_cast<std::uint64_t>(seed) << 20;
