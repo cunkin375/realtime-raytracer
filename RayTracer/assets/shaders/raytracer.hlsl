@@ -67,7 +67,7 @@ uint PCG_Hash(uint input)
 float RandomUnitInterval(inout uint seed)
 {
     seed = PCG_Hash(seed);
-    return (float)seed / (float)0xFFFFFFFF; // might be causing problems
+    return (float)seed / (float)0xFFFFFFFF;
 }
 
 float3 RandomUnitSphereVector(inout uint seed)
