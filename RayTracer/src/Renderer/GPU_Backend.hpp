@@ -1,5 +1,7 @@
 #pragma once
 
+#include <atomic>
+
 #include <vulkan/vulkan.h>
 
 #include <glm/glm.hpp>
@@ -75,6 +77,8 @@ private:
 
     void WriteDescriptorSet();
 
+    void PollShaderChanges();
+
     u32 FindMemoryType(u32 type_filter, ::VkMemoryPropertyFlags properties);
 
     GPU_Buffer AllocateBuffer(::VkDeviceSize size, ::VkBufferUsageFlags usage_flags,
@@ -84,6 +88,7 @@ private:
     Settings config_;
 
     std::unique_ptr<DirectoryWatcher> shader_watcher_{ nullptr };
+    std::atomic<bool>                 pending_reload_{ false };
 
     bool valid_state_{ false };
 

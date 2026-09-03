@@ -3,6 +3,7 @@
 
 #include <backends/imgui_impl_vulkan.h>
 #include <memory>
+#include <atomic>
 #include <vulkan/vulkan.h>
 
 // clang-format off
@@ -153,7 +154,7 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
 
     Check(::vkCreateDescriptorSetLayout(device_, &layout_info, nullptr, &descriptor_set_layout_));
 
-    // === Create Pipeline Layout ===
+    // Create pipeline layout 
     auto pipeline_layout_info = ::VkPipelineLayoutCreateInfo{
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount         = 1,
@@ -211,12 +212,18 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
     Check(::vkAllocateDescriptorSets(device_, &allocation_info, &descriptor_set_));
 
     // NOTE: keep this at the bottom
-    shader_watcher_ = std::make_unique<DirectoryWatcher>(
-        Util::ResolvePath("RayTracer/assets/shaders/"),
-        [this](const DirectoryWatcher::FileEvent &event) -> void { HotReloadShader(); });
-
+    shader_watcher_ =
+        std::make_unique<DirectoryWatcher>(Util::ResolvePath("RayTracer/assets/shaders/"),
+                                           [this](const DirectoryWatcher::FileEvent &event) -> void
+                                           {
+                                                pending_reload_ = true;
+                                           });
     if (shader_watcher_ != nullptr)
+    {
         valid_state_ = true;
+        shader_watcher_->SetEnabled(true);
+        Log::Info("Shader watcher intialized.");
+    }
 }
 
 GPU_Backend::~GPU_Backend()
@@ -266,6 +273,7 @@ void GPU_Backend::SetImageParameters(u32 width, u32 height, u32 frame_index)
 
 void GPU_Backend::Render(const Camera &camera, const Scene &scene)
 {
+    PollShaderChanges();
     ResizeBuffersIfNeeded(config_.image_width, config_.image_height, scene);
 
     /* Upload Metadata */
@@ -430,7 +438,58 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
     return true;
 }
 
-void GPU_Backend::HotReloadShader() {}
+void GPU_Backend::HotReloadShader()
+{
+    Log::Info("Hot-reloading shader.");
+
+    // wait fo rGPU to finish work using old pipeline before replacing
+    ::vkDeviceWaitIdle(device_);
+
+    VkShaderModule old_module   = compute_shader_module_;
+    VkPipeline     old_pipeline = compute_pipeline_;
+
+    compute_shader_module_ = VK_NULL_HANDLE;
+
+    if (false == CompileShaders("RayTracer/assets/shaders/raytracer.hlsl"))
+    {
+        Log::Error("Shader hot-reload failed, reverting to old pipeline.");
+        compute_shader_module_ = old_module;
+    }
+
+    // create pipeline with new module
+    auto shader_stage_info = ::VkPipelineShaderStageCreateInfo{
+        .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
+        .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
+        .module = compute_shader_module_,
+        .pName  = "main",
+    };
+
+    auto pipeline_info = ::VkComputePipelineCreateInfo{
+        .sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
+        .stage  = shader_stage_info,
+        .layout = pipeline_layout_,
+    };
+
+    VkPipeline new_pipeline{ VK_NULL_HANDLE };
+    VkResult   result =
+        ::vkCreateComputePipelines(device_, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &new_pipeline);
+
+    if (result != VK_SUCCESS)
+    {
+        Log::Error("Pipeline creation failed during hot reload, reverting to old pipeline.");
+        ::vkDestroyShaderModule(device_, compute_shader_module_, nullptr);
+        compute_shader_module_ = old_module;
+        return;
+    }
+
+    // swap new pipeline and destroy old resources
+    compute_pipeline_ = new_pipeline;
+
+    ::vkDestroyPipeline(device_, old_pipeline, nullptr);
+    ::vkDestroyShaderModule(device_, old_module, nullptr);
+
+    Log::Info("Hot-reloaded shader.");
+}
 
 u32 GPU_Backend::FindMemoryType(u32 type_filter, ::VkMemoryPropertyFlags properties)
 {
@@ -661,4 +720,11 @@ void GPU_Backend::WriteDescriptorSet()
                               .pImageInfo      = &output_image_info },
     };
     ::vkUpdateDescriptorSets(device_, static_cast<u32>(writes.size()), writes.data(), 0, nullptr);
+}
+
+void GPU_Backend::PollShaderChanges()
+{
+    shader_watcher_->PollEvents();
+    if (pending_reload_.exchange(false))
+        HotReloadShader();
 }

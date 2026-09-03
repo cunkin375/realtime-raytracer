@@ -76,7 +76,7 @@ void Renderer::Render(const Camera &camera, const Scene &scene)
             gpu_.SetImageParameters(final_image_->GetWidth(), final_image_->GetHeight(), frame_index_);
             gpu_.Render(camera, scene);
             break;
-        default: Log::Error("Unknown backend reached Renderer!"); std::exit(-1);
+        default: Log::Fatal("Unknown backend reached Renderer!"); std::exit(-1);
     }
 
     if (settings_.accumulate)
@@ -91,5 +91,6 @@ VkDescriptorSet Renderer::GetDescriptorSet()
     {
         case Backend::CPU: return final_image_->GetDescriptorSet();
         case Backend::GPU: return gpu_.GetDescriptorSet();
+        default: Log::Fatal("Unknown backend reached Renderer!"); std::exit(-1);
     }
 }
