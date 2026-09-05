@@ -4,8 +4,8 @@
 
 #include <glm/geometric.hpp>
 
-#include "Math/Vector.hpp"
 #include "ImageColor.hpp"
+#include "Math/Vector.hpp"
 #include "Ray.hpp"
 #include "Scene.hpp"
 #include "Util/Aliases.hpp"
@@ -25,6 +25,17 @@ void Renderer::SetBackend(i32 incoming_backend)
     {
         case 0: active_backend_ = Backend::CPU; break;
         case 1: active_backend_ = gpu_.ValidState() ? Backend::GPU : Backend::CPU; break;
+        default: Log::Fatal("Unknown backend reached Renderer!"); std::exit(-1);
+    }
+}
+
+// NOTE: this can be cleaned up, but its the simplest implementation that fits with ImGui's requirements
+i32 Renderer::GetBackend()
+{
+    switch (active_backend_)
+    {
+        case Backend::CPU: return 0;
+        case Backend::GPU: return 1;
         default: Log::Fatal("Unknown backend reached Renderer!"); std::exit(-1);
     }
 }

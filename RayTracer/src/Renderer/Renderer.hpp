@@ -31,7 +31,7 @@ public:
 
 private:
     Settings settings_;
-    Backend active_backend_{ Backend::CPU };
+    Backend active_backend_{ Backend::GPU };
     CPU_Backend cpu_;
     GPU_Backend gpu_;
 
@@ -51,6 +51,9 @@ public:
 
     void Render(const Camera &camera, const Scene &scene);
     void SetBackend(i32 incoming_backend);
+
+    // NOTE: this can be cleaned up, but its the simplest implementation that fits with ImGui's requirements
+    i32 GetBackend();
 
     std::shared_ptr<Walnut::Image> GetFinalImage() const noexcept { return final_image_; }
     VkDescriptorSet GetDescriptorSet();

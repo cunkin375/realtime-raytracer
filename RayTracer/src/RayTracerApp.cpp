@@ -144,11 +144,16 @@ public:
         viewport_width_  = ImGui::GetContentRegionAvail().x;
         viewport_height_ = ImGui::GetContentRegionAvail().y;
 
-        // TODO: this is kind of weird at the moment, might clean up later
-        if (auto image = renderer_.GetFinalImage(); image != nullptr)
+        if (viewport_width_ > 0 && viewport_height_ > 0)
         {
-            ImGui::Image(renderer_.GetDescriptorSet(),
-                         { static_cast<f32>(image->GetWidth()), static_cast<f32>(image->GetHeight()) },
+            RenderViewport();
+        }
+
+        if (auto descriptor_set = renderer_.GetDescriptorSet();
+            descriptor_set != VK_NULL_HANDLE && viewport_width_ > 0 && viewport_height_ > 0)
+        {
+            ImGui::Image(descriptor_set,
+                         { static_cast<f32>(viewport_width_), static_cast<f32>(viewport_height_) },
                          ImVec2(0, 1), ImVec2(1, 0));
         }
 
@@ -163,7 +168,7 @@ public:
 
         // BUG: This currently lets you pick a backend in an invalid state, which causes a crash
         static const char *renderer_backends[] = { "CPU", "GPU" };
-        static i32         current_backend{ 0 };
+        static i32         current_backend{ renderer_.GetBackend() };
         if (ImGui::Combo("Renderer", &current_backend, renderer_backends, IM_ARRAYSIZE(renderer_backends)))
             renderer_.SetBackend(current_backend);
 
@@ -175,11 +180,9 @@ public:
         // NOTE: keep UI above this code
         if (reset_frame_index)
             renderer_.ResetFrameIndex();
-
-        Render();
     }
 
-    void Render()
+    void RenderViewport()
     {
         auto timer = Walnut::Timer{};
 
