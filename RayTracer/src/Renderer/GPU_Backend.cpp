@@ -677,7 +677,28 @@ void GPU_Backend::ResizeImageBuffersIfNeeded(u32 width, u32 height)
     current_pixel_count_ = pixel_count;
 
     // rebind new VkBuffers
-    WriteDescriptorSet();
+    // WriteDescriptorSet();
+    auto accumulation_info = VkDescriptorBufferInfo{ .buffer = ssbo_accumulation_.handle,
+                                                     .offset = 0,
+                                                     .range  = ssbo_accumulation_.size };
+    auto output_image_info = VkDescriptorImageInfo{ .sampler     = VK_NULL_HANDLE,
+                                                    .imageView   = shared_image_view_,
+                                                    .imageLayout = VK_IMAGE_LAYOUT_GENERAL };
+    auto writes            = std::array{
+        VkWriteDescriptorSet{ .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                              .dstSet          = descriptor_set_,
+                              .dstBinding      = 3,
+                              .descriptorCount = 1,
+                              .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                              .pBufferInfo     = &accumulation_info },
+        VkWriteDescriptorSet{ .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                              .dstSet          = descriptor_set_,
+                              .dstBinding      = 4,
+                              .descriptorCount = 1,
+                              .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                              .pImageInfo      = &output_image_info },
+    };
+    ::vkUpdateDescriptorSets(device_, static_cast<u32>(writes.size()), writes.data(), 0, nullptr);
 }
 
 void GPU_Backend::ResizeObjectBuffersIfNeeded(const Scene &scene)
@@ -705,9 +726,40 @@ void GPU_Backend::ResizeObjectBuffersIfNeeded(const Scene &scene)
                                    HOST_VISIBLE);
     ssbo_materials_ = AllocateBuffer(sizeof(Material) * scene.materials.size(),
                                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
+
+    // write new descriptor sets
+    auto ubo_info =
+        VkDescriptorBufferInfo{ .buffer = ubo_meta_.handle, .offset = 0, .range = ubo_meta_.size };
+    auto spheres_info =
+        VkDescriptorBufferInfo{ .buffer = ssbo_spheres_.handle, .offset = 0, .range = ssbo_spheres_.size };
+    auto materials_info = VkDescriptorBufferInfo{ .buffer = ssbo_materials_.handle,
+                                                  .offset = 0,
+                                                  .range  = ssbo_materials_.size };
+    auto writes         = std::array{
+        VkWriteDescriptorSet{ .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                              .dstSet          = descriptor_set_,
+                              .dstBinding      = 0,
+                              .descriptorCount = 1,
+                              .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                              .pBufferInfo     = &ubo_info },
+        VkWriteDescriptorSet{ .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                              .dstSet          = descriptor_set_,
+                              .dstBinding      = 1,
+                              .descriptorCount = 1,
+                              .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                              .pBufferInfo     = &spheres_info },
+        VkWriteDescriptorSet{ .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+                              .dstSet          = descriptor_set_,
+                              .dstBinding      = 2,
+                              .descriptorCount = 1,
+                              .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                              .pBufferInfo     = &materials_info },
+    };
+    ::vkUpdateDescriptorSets(device_, static_cast<u32>(writes.size()), writes.data(), 0, nullptr);
 }
 
-// Rebinds buffers to descriptor set
+// Rebinds all buffers to descriptor set
+// If this runs while ANY buffers are null, it will cause validation errors
 void GPU_Backend::WriteDescriptorSet()
 {
     // clang-format off
