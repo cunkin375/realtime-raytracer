@@ -30,7 +30,7 @@ void Renderer::SetBackend(i32 incoming_backend)
 }
 
 // NOTE: this can be cleaned up, but its the simplest implementation that fits with ImGui's requirements
-i32 Renderer::GetBackend()
+i32 Renderer::GetBackendNum()
 {
     switch (active_backend_)
     {
@@ -40,14 +40,20 @@ i32 Renderer::GetBackend()
     }
 }
 
+Renderer::Backend Renderer::GetBackend() { return active_backend_; }
+
 void Renderer::OnUpdate(f32 timestamp)
 {
     if (!gpu_.ValidState())
         active_backend_ = Backend::CPU;
 }
 
+// TODO: this is currently inefficient, but theres spaghetti code with Walnut that's hard to work around
 void Renderer::OnResize(u32 width, u32 height)
 {
+    if (width == 0 || height == 0)
+        return;
+
     if (final_image_)
     {
         if (final_image_->GetWidth() == width && final_image_->GetHeight() == height)
@@ -59,13 +65,14 @@ void Renderer::OnResize(u32 width, u32 height)
         final_image_ = std::make_shared<Walnut::Image>(width, height, Walnut::ImageFormat::RGBA);
     }
 
-    ResetFrameIndex();
-
     delete[] image_data_;
     image_data_ = new u32[width * height];
 
     delete[] accumulation_data_;
     accumulation_data_ = new fVector4[width * height];
+
+    ResetFrameIndex();
+
 }
 
 void Renderer::Render(const Camera &camera, const Scene &scene)

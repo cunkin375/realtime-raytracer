@@ -16,25 +16,25 @@ private:
     {
         fVector3 world_position;
         fVector3 world_normal;
-        f32 hit_distance;
-        i32 object_index;
+        f32      hit_distance;
+        i32      object_index;
     };
 
     struct Settings
     {
-        u32 image_width;
-        u32 image_height;
-        u32 frame_index;
+        u32  image_width;
+        u32  image_height;
+        u32  frame_index;
         bool fast_random;
     };
 
 private:
     std::vector<std::jthread> threads_;
-    u32 thread_count_{ 0 };
+    u32                       thread_count_{ 0 };
 
     Settings config_;
 
-    const Scene *active_scene_{ nullptr };
+    const Scene  *active_scene_{ nullptr };
     const Camera *active_camera_{ nullptr };
 
 public:

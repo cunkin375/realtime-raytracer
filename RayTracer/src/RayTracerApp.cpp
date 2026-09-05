@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <limits>
 #include <ranges>
+#include <thread>
 
 #include "Camera.hpp"
 #include "Renderer/Renderer.hpp"
@@ -16,6 +17,7 @@
 #include "Walnut/Timer.h"
 
 #include "Util/Aliases.hpp"
+#include "Util/Log.hpp"
 
 namespace
 {
@@ -29,7 +31,7 @@ using FarPlane  = f32;
 class RayTracerLayer : public Walnut::Layer
 {
 private:
-    Renderer renderer_{};
+    Renderer renderer_{ Renderer::Backend::GPU };
     Camera   camera_;
     Scene    scene_;
     u32      viewport_width_{ 0 };
@@ -39,10 +41,9 @@ private:
 public:
     RayTracerLayer() : camera_{ FOV{ 45.0f }, NearPlane{ 0.1f }, FarPlane{ 100.0f } }
     {
+
         if (!std::filesystem::exists("imgui.ini"))
-        {
             ImGui::LoadIniSettingsFromDisk("DefaultLayout.ini");
-        }
 
         auto &pink_sphere     = scene_.materials.emplace_back();
         pink_sphere.albedo    = fVector3{ 1.f, 0.f, 1.f };
@@ -145,9 +146,7 @@ public:
         viewport_height_ = ImGui::GetContentRegionAvail().y;
 
         if (viewport_width_ > 0 && viewport_height_ > 0)
-        {
             RenderViewport();
-        }
 
         if (auto descriptor_set = renderer_.GetDescriptorSet();
             descriptor_set != VK_NULL_HANDLE && viewport_width_ > 0 && viewport_height_ > 0)
@@ -168,7 +167,7 @@ public:
 
         // BUG: This currently lets you pick a backend in an invalid state, which causes a crash
         static const char *renderer_backends[] = { "CPU", "GPU" };
-        static i32         current_backend{ renderer_.GetBackend() };
+        static i32         current_backend{ renderer_.GetBackendNum() };
         if (ImGui::Combo("Renderer", &current_backend, renderer_backends, IM_ARRAYSIZE(renderer_backends)))
             renderer_.SetBackend(current_backend);
 
