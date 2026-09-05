@@ -228,6 +228,9 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
 
 GPU_Backend::~GPU_Backend()
 {
+    // wait for descriptor set to be done before destroying buffers and image
+    ::vkDeviceWaitIdle(device_);
+
     auto destroy = [&](GPU_Buffer &buffer)
     {
         if (buffer.handle)
@@ -543,20 +546,10 @@ void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scen
     if (pixel_count == current_pixel_count_)
         return;
 
-    auto destroy = [&](GPU_Buffer &buffer)
-    {
-        if (buffer.handle)
-            ::vkDestroyBuffer(device_, buffer.handle, nullptr);
-        if (buffer.memory)
-            ::vkFreeMemory(device_, buffer.memory, nullptr);
-        buffer = {};
-    };
-    destroy(ubo_meta_);
-    destroy(ssbo_spheres_);
-    destroy(ssbo_materials_);
-    destroy(ssbo_accumulation_);
+    ::vkDeviceWaitIdle(device_);
 
     // Destroy old shared image resources
+    // this must happen before destroying buffer information
     if (shared_image_view_)
         ::vkDestroyImageView(device_, shared_image_view_, nullptr);
     if (shared_image_)
@@ -569,6 +562,19 @@ void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scen
     shared_image_view_   = VK_NULL_HANDLE;
     shared_image_memory_ = VK_NULL_HANDLE;
     shared_sampler_      = VK_NULL_HANDLE;
+
+    auto destroy = [&](GPU_Buffer &buffer)
+    {
+        if (buffer.handle)
+            ::vkDestroyBuffer(device_, buffer.handle, nullptr);
+        if (buffer.memory)
+            ::vkFreeMemory(device_, buffer.memory, nullptr);
+        buffer = {};
+    };
+    destroy(ubo_meta_);
+    destroy(ssbo_spheres_);
+    destroy(ssbo_materials_);
+    destroy(ssbo_accumulation_);
 
     // Create image (STORAGE for compute write, SAMPLED for ImGui fragment read)
     auto image_info = ::VkImageCreateInfo{
