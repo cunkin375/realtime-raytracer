@@ -191,21 +191,28 @@ private:
 
 Walnut::Application *Walnut::CreateApplication(int argc, char **argv)
 {
-    Walnut::ApplicationSpecification spec{ .Name = "Realtime Ray Tracer", .EnableDebugInfo = true };
+    Walnut::ApplicationSpecification spec{
+        .Name            = "Realtime Ray Tracer",
+        .EnableDebugInfo = true,
+        .CustomTitleBar  = true,
+    };
 
     Walnut::Application *app = new Walnut::Application(spec);
     app->PushLayer<RayTracerLayer>();
-    app->SetMenubarCallback(
-        [app]()
-        {
-            if (ImGui::BeginMenu("File"))
+    if (spec.CustomTitleBar)
+    {
+        app->SetMenubarCallback(
+            [app, spec]()
             {
-                if (ImGui::MenuItem("Exit"))
+                if (ImGui::BeginMenu(spec.Name.c_str()))
                 {
-                    app->Close();
+                    if (ImGui::MenuItem("Exit"))
+                    {
+                        app->Close();
+                    }
+                    ImGui::EndMenu();
                 }
-                ImGui::EndMenu();
-            }
-        });
+            });
+    }
     return app;
 }
