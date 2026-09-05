@@ -1,5 +1,7 @@
 #include "Camera.hpp"
 
+#include <thread>
+
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #define GLM_ENABLE_EXPERIMENTAL
@@ -12,6 +14,10 @@ using namespace Walnut;
 Camera::Camera(f32 verticalFOV, f32 nearClip, f32 farClip)
     : vertical_fov_(verticalFOV), near_plane_(nearClip), far_plane_(farClip)
 {
+#if MULTI_THREAD
+    thread_count_ = std::thread::hardware_concurrency() - 2;
+    threads_.reserve(thread_count_);
+#endif
     forward_direction_ = glm::vec3(0, 0, -1);
     position_ = glm::vec3(0, 0, 6);
 }
@@ -123,19 +129,25 @@ void Camera::RecalculateRayDirections()
     ray_directions_cache_.resize(viewport_width_ * viewport_height_);
 
 #if MULTI_THREAD // TODO: idk implement this for fun
-    for (u32 y = 0; y < viewport_height_; y++)
+    for (auto thread{ 0zu }; thread < thread_count_; ++thread)
     {
-        for (u32 x = 0; x < viewport_width_; x++)
-        {
-            glm::vec2 coord = { (f32)x / (f32)viewport_width_, (f32)y / (f32)viewport_height_ };
-            coord = coord * 2.0f - 1.0f; // -1 -> 1
+        threads_.emplace_back(
+            [&, thread]()
+            {
+                for (auto y{ thread }; y < viewport_height_; y += thread_count_)
+                {
+                    for (auto x{ 0zu }; x < viewport_width_; ++x)
+                    {
+                        glm::vec2 coord = { (f32)x / (f32)viewport_width_, (f32)y / (f32)viewport_height_ };
+                        coord           = coord * 2.0f - 1.0f; // -1 -> 1
 
-            glm::vec4 target = inverse_projection_ * glm::vec4(coord.x, coord.y, 1, 1);
-            auto test0 = glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0);
-            glm::vec3 rayDirection = glm::vec3(
-                inverse_view_ * test0); // World space
-            ray_directions_cache_[x + y * viewport_width_] = rayDirection;
-        }
+                        glm::vec4 target       = inverse_projection_ * glm::vec4(coord.x, coord.y, 1, 1);
+                        auto      test0        = glm::vec4(glm::normalize(glm::vec3(target) / target.w), 0);
+                        glm::vec3 rayDirection = glm::vec3(inverse_view_ * test0); // World space
+                        ray_directions_cache_[x + y * viewport_width_] = rayDirection;
+                    }
+                }
+            });
     }
 #else
     for (u32 y = 0; y < viewport_height_; y++)

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <thread>
 #include <vector>
 
 #include "Util/Aliases.hpp"
@@ -14,8 +15,8 @@ private:
     glm::mat4 inverse_view_{ 1.0f };
 
     f32 vertical_fov_ = 45.0f;
-    f32 near_plane_ = 0.1f;
-    f32 far_plane_ = 100.0f;
+    f32 near_plane_   = 0.1f;
+    f32 far_plane_    = 100.0f;
 
     glm::vec3 position_{ 0.0f, 0.0f, 0.0f };
     glm::vec3 forward_direction_{ 0.0f, 0.0f, 0.0f };
@@ -24,8 +25,11 @@ private:
 
     glm::vec2 last_mouse_position_{ 0.0f, 0.0f };
 
-    u32 viewport_width_ = 0;
+    u32 viewport_width_  = 0;
     u32 viewport_height_ = 0;
+
+    std::vector<std::jthread> threads_;
+    u32                       thread_count_{ 0 };
 
 public:
     Camera(f32 vertical_fov, f32 near_plane, f32 far_plane);
@@ -45,9 +49,9 @@ public:
 
     f32 GetRotationSpeed();
 
+    void RecalculateRayDirections();
+
 private:
     void RecalculateProjection();
     void RecalculateView();
-    void RecalculateRayDirections();
-
 };
