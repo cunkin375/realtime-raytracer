@@ -189,7 +189,7 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
     Check(
         ::vkCreateComputePipelines(device_, VK_NULL_HANDLE, 1, &pipeline_info, nullptr, &compute_pipeline_));
 
-    auto pool_sizes = std::array<::VkDescriptorPoolSize, 3>{
+    auto pool_sizes = std::array{
         ::VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 1 },
         ::VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_BUFFER, 3 },
         ::VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
@@ -228,18 +228,10 @@ GPU_Backend::~GPU_Backend()
     // wait for descriptor set to be done before destroying buffers and image
     ::vkDeviceWaitIdle(device_);
 
-    auto destroy = [&](GPU_Buffer &buffer)
-    {
-        if (buffer.handle)
-            ::vkDestroyBuffer(device_, buffer.handle, nullptr);
-        if (buffer.memory)
-            ::vkFreeMemory(device_, buffer.memory, nullptr);
-        buffer = {};
-    };
-    destroy(ubo_meta_);
-    destroy(ssbo_spheres_);
-    destroy(ssbo_materials_);
-    destroy(ssbo_accumulation_);
+    DestroyBuffer(ubo_meta_);
+    DestroyBuffer(ssbo_spheres_);
+    DestroyBuffer(ssbo_materials_);
+    DestroyBuffer(ssbo_accumulation_);
 
     if (shared_sampler_)
         ::vkDestroySampler(device_, shared_sampler_, nullptr);
@@ -276,7 +268,8 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene)
     PollShaderChanges();
     if (!valid_state_)
         return;
-    ResizeBuffersIfNeeded(config_.image_width, config_.image_height, scene);
+    ResizeImageBuffersIfNeeded(config_.image_width, config_.image_height);
+    ResizeObjectBuffersIfNeeded(scene);
 
     /* Upload Metadata */
     {
@@ -308,9 +301,10 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene)
 
     /* Upload Sphere Data */
     {
-        void *pointer;
+        void              *pointer;
+        const VkDeviceSize copy_size = sizeof(Sphere) * scene.spheres.size();
         ::vkMapMemory(device_, ssbo_spheres_.memory, 0, ssbo_spheres_.size, 0, &pointer);
-        std::memcpy(pointer, scene.spheres.data(), ssbo_spheres_.size);
+        std::memcpy(pointer, scene.spheres.data(), copy_size);
         ::vkUnmapMemory(device_, ssbo_spheres_.memory);
     }
 
@@ -327,7 +321,7 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene)
     ::VkCommandBuffer command = Walnut::Application::GetCommandBuffer(Begin{ true });
 
     // transition shared image for compute shader write
-    auto pre_barrier = ::VkImageMemoryBarrier2{
+    auto pre_image_barrier = ::VkImageMemoryBarrier2{
         .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
         .srcStageMask     = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
         .srcAccessMask    = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
@@ -339,10 +333,41 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene)
         .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
     };
 
+    auto buffer_barriers = std::array{
+        // SpheresSSBO
+        ::VkBufferMemoryBarrier2{
+            .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .srcStageMask        = VK_PIPELINE_STAGE_2_HOST_BIT,
+            .srcAccessMask       = VK_ACCESS_2_HOST_WRITE_BIT,
+            .dstStageMask        = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer              = ssbo_spheres_.handle,
+            .offset              = 0,
+            .size                = ssbo_spheres_.size,
+        },
+        // MaterialsSSBO
+        ::VkBufferMemoryBarrier2{
+            .sType               = VK_STRUCTURE_TYPE_BUFFER_MEMORY_BARRIER_2,
+            .srcStageMask        = VK_PIPELINE_STAGE_2_HOST_BIT,
+            .srcAccessMask       = VK_ACCESS_2_HOST_WRITE_BIT,
+            .dstStageMask        = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+            .dstAccessMask       = VK_ACCESS_2_SHADER_STORAGE_READ_BIT,
+            .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
+            .buffer              = ssbo_materials_.handle,
+            .offset              = 0,
+            .size                = ssbo_materials_.size,
+        },
+    };
+
     auto pre_dependency = ::VkDependencyInfo{
-        .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
-        .imageMemoryBarrierCount = 1,
-        .pImageMemoryBarriers    = &pre_barrier,
+        .sType                    = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
+        .bufferMemoryBarrierCount = static_cast<u32>(buffer_barriers.size()),
+        .pBufferMemoryBarriers    = buffer_barriers.data(),
+        .imageMemoryBarrierCount  = 1,
+        .pImageMemoryBarriers     = &pre_image_barrier,
     };
     ::vkCmdPipelineBarrier2(command, &pre_dependency);
 
@@ -539,7 +564,7 @@ GPU_Backend::GPU_Buffer GPU_Backend::AllocateBuffer(::VkDeviceSize size, ::VkBuf
 }
 
 // Reallocates memory for buffers
-void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scene)
+void GPU_Backend::ResizeImageBuffersIfNeeded(u32 width, u32 height)
 {
     const u32 pixel_count = width * height;
     if (pixel_count == current_pixel_count_)
@@ -562,18 +587,7 @@ void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scen
     shared_image_memory_ = VK_NULL_HANDLE;
     shared_sampler_      = VK_NULL_HANDLE;
 
-    auto destroy = [&](GPU_Buffer &buffer)
-    {
-        if (buffer.handle)
-            ::vkDestroyBuffer(device_, buffer.handle, nullptr);
-        if (buffer.memory)
-            ::vkFreeMemory(device_, buffer.memory, nullptr);
-        buffer = {};
-    };
-    destroy(ubo_meta_);
-    destroy(ssbo_spheres_);
-    destroy(ssbo_materials_);
-    destroy(ssbo_accumulation_);
+    DestroyBuffer(ssbo_accumulation_);
 
     // Create image (STORAGE for compute write, SAMPLED for ImGui fragment read)
     auto image_info = ::VkImageCreateInfo{
@@ -655,6 +669,31 @@ void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scen
     imgui_descriptor_ = ImGui_ImplVulkan_AddTexture(shared_sampler_, shared_image_view_,
                                                     VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
+    // Allocate device local buffers
+    ssbo_accumulation_ = AllocateBuffer(sizeof(fVector4) * pixel_count,
+                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
+
+    current_pixel_count_ = pixel_count;
+
+    // rebind new VkBuffers
+    WriteDescriptorSet();
+}
+
+void GPU_Backend::ResizeObjectBuffersIfNeeded(const Scene &scene)
+{
+    ::vkDeviceWaitIdle(device_);
+
+    const VkDeviceSize new_spheres_size   = sizeof(Sphere) * scene.spheres.size();
+    const VkDeviceSize new_materials_size = sizeof(Material) * scene.materials.size();
+
+    if (new_spheres_size <= ssbo_spheres_.size || new_materials_size <= ssbo_materials_.size)
+        return;
+
+    DestroyBuffer(ubo_meta_);
+    DestroyBuffer(ssbo_spheres_);
+    DestroyBuffer(ssbo_materials_);
+
     // Map memory without manual cache flushing
     // NOTE: this might cause performance issues on hardware without shared RAM or BAR window, and if used
     // with very large buffers
@@ -666,16 +705,6 @@ void GPU_Backend::ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scen
                                    HOST_VISIBLE);
     ssbo_materials_ = AllocateBuffer(sizeof(Material) * scene.materials.size(),
                                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
-
-    // Allocate device local buffers
-    ssbo_accumulation_ = AllocateBuffer(sizeof(fVector4) * pixel_count,
-                                        VK_BUFFER_USAGE_STORAGE_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-                                        VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT);
-
-    current_pixel_count_ = pixel_count;
-
-    // rebind new VkBuffers
-    WriteDescriptorSet();
 }
 
 // Rebinds buffers to descriptor set
@@ -692,7 +721,7 @@ void GPU_Backend::WriteDescriptorSet()
                                                     .imageView   = shared_image_view_,
                                                     .imageLayout = VK_IMAGE_LAYOUT_GENERAL };
 
-    auto writes = std::array<::VkWriteDescriptorSet, 5>{
+    auto writes = std::array{
         VkWriteDescriptorSet{ .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                               .dstSet          = descriptor_set_,
                               .dstBinding      = 0,
@@ -732,4 +761,13 @@ void GPU_Backend::PollShaderChanges()
     shader_watcher_->PollEvents();
     if (pending_reload_.exchange(false))
         HotReloadShader();
+}
+
+void GPU_Backend::DestroyBuffer(GPU_Buffer &buffer)
+{
+    if (buffer.handle)
+        ::vkDestroyBuffer(device_, buffer.handle, nullptr);
+    if (buffer.memory)
+        ::vkFreeMemory(device_, buffer.memory, nullptr);
+    buffer = {};
 }

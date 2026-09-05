@@ -18,6 +18,7 @@ struct Sphere
     float3 position;
     float radius;
     int material_index;
+    int3 _pad;
 };
 
 struct Material

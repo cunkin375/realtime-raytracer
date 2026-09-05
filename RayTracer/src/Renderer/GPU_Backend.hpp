@@ -73,16 +73,20 @@ private:
 
     void HotReloadShader();
 
-    void ResizeBuffersIfNeeded(u32 width, u32 height, const Scene &scene);
+    void ResizeImageBuffersIfNeeded(u32 width, u32 height);
+    void ResizeObjectBuffersIfNeeded(const Scene &scene);
 
     void WriteDescriptorSet();
 
     void PollShaderChanges();
 
+    void DestroyBuffer(GPU_Buffer &buffer);
+
     u32 FindMemoryType(u32 type_filter, ::VkMemoryPropertyFlags properties);
 
     GPU_Buffer AllocateBuffer(::VkDeviceSize size, ::VkBufferUsageFlags usage_flags,
                               ::VkMemoryPropertyFlags memory_properties);
+
 
 private:
     Settings config_;
@@ -93,6 +97,7 @@ private:
     bool valid_state_{ false };
 
     u32 current_pixel_count_;
+    u32 current_object_count_;
 
     GPU_Buffer ubo_meta_;
     GPU_Buffer ssbo_spheres_;
