@@ -9,7 +9,7 @@
 #include "Ray.hpp"
 #include "Util/Aliases.hpp"
 
-class CPU_Backend
+class [[deprecated("CPU_Backend will be removed")]] CPU_Backend
 {
 private:
     struct HitRecord

@@ -1,17 +1,8 @@
 #pragma once
 
-#include <memory>
-
-#include "CPU_Backend.hpp"
-#include "GPU_Backend.hpp"
-
-#include "Walnut/Image.h"
-
 #include "Camera.hpp"
+#include "GPU_Backend.hpp"
 #include "Scene.hpp"
-
-#include "Math/Vector.hpp"
-#include "Ray.hpp"
 #include "Util/Aliases.hpp"
 
 class Renderer
@@ -20,45 +11,26 @@ public:
     struct Settings
     {
         bool accumulate{ true };
-        bool fast_random{ true };
-    };
-
-    enum class Backend
-    {
-        CPU,
-        GPU,
     };
 
 private:
     Settings    settings_;
-    Backend     active_backend_;
-    CPU_Backend cpu_;
     GPU_Backend gpu_;
 
-    std::shared_ptr<Walnut::Image> final_image_{};
-
-    u32      *image_data_{ nullptr };
-    fVector4 *accumulation_data_{ nullptr };
-
+    u32 width_{ 0 };
+    u32 height_{ 0 };
     u32 frame_index_{ 1 };
 
 public:
-    Renderer(Backend initial_backend) : active_backend_{ initial_backend } {}
-    ~Renderer();
+    Renderer() = default;
+    ~Renderer() = default;
 
-    void OnUpdate(f32 timestamp);
+    void OnUpdate([[maybe_unused]] f32 timestamp) {}
     void OnResize(u32 width, u32 height);
 
     void Render(const Camera &camera, const Scene &scene);
 
-    void SetBackend(i32 incoming_backend);
-
-    // NOTE: this can be cleaned up, but its the simplest implementation that fits with ImGui's requirements
-    i32     GetBackendNum();
-    Backend GetBackend();
-
-    std::shared_ptr<Walnut::Image> GetFinalImage() const noexcept { return final_image_; }
-    VkDescriptorSet                GetDescriptorSet();
+    VkDescriptorSet GetDescriptorSet();
 
     void ResetFrameIndex() { frame_index_ = 1; }
 

@@ -1,9 +1,9 @@
 #include "GPU_Backend.hpp"
 #include "Scene.hpp"
 
+#include <atomic>
 #include <backends/imgui_impl_vulkan.h>
 #include <memory>
-#include <atomic>
 #include <vulkan/vulkan.h>
 
 // clang-format off
@@ -154,7 +154,7 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
 
     Check(::vkCreateDescriptorSetLayout(device_, &layout_info, nullptr, &descriptor_set_layout_));
 
-    // Create pipeline layout 
+    // Create pipeline layout
     auto pipeline_layout_info = ::VkPipelineLayoutCreateInfo{
         .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
         .setLayoutCount         = 1,
@@ -168,7 +168,7 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
     /* Compile Shaders */
     if (false == CompileShaders("RayTracer/assets/shaders/raytracer.hlsl"))
     {
-        Log::Error("Shaders failed to compile, using CPU renderer as fallback.");
+        Log::Error("Shaders failed to compile.");
         return;
     }
 
@@ -212,12 +212,9 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
     Check(::vkAllocateDescriptorSets(device_, &allocation_info, &descriptor_set_));
 
     // NOTE: keep this at the bottom
-    shader_watcher_ =
-        std::make_unique<DirectoryWatcher>(Util::ResolvePath("RayTracer/assets/shaders/"),
-                                           [this](const DirectoryWatcher::FileEvent &event) -> void
-                                           {
-                                                pending_reload_ = true;
-                                           });
+    shader_watcher_ = std::make_unique<DirectoryWatcher>(
+        Util::ResolvePath("RayTracer/assets/shaders/"),
+        [this](const DirectoryWatcher::FileEvent &event) -> void { pending_reload_ = true; });
     if (shader_watcher_ != nullptr)
     {
         valid_state_ = true;
@@ -277,6 +274,8 @@ void GPU_Backend::SetImageParameters(u32 width, u32 height, u32 frame_index)
 void GPU_Backend::Render(const Camera &camera, const Scene &scene)
 {
     PollShaderChanges();
+    if (!valid_state_)
+        return;
     ResizeBuffersIfNeeded(config_.image_width, config_.image_height, scene);
 
     /* Upload Metadata */

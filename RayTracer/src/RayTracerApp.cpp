@@ -31,7 +31,7 @@ using FarPlane  = f32;
 class RayTracerLayer : public Walnut::Layer
 {
 private:
-    Renderer renderer_{ Renderer::Backend::GPU };
+    Renderer renderer_{};
     Camera   camera_;
     Scene    scene_;
     u32      viewport_width_{ 0 };
@@ -163,13 +163,6 @@ public:
         ImGui::Text("Last Render: %.3fms", last_render_time_);
 
         ImGui::Checkbox("Accumulate", &renderer_.GetSettings().accumulate);
-        ImGui::Checkbox("Fast Random", &renderer_.GetSettings().fast_random);
-
-        // BUG: This currently lets you pick a backend in an invalid state, which causes a crash
-        static const char *renderer_backends[] = { "CPU", "GPU" };
-        static i32         current_backend{ renderer_.GetBackendNum() };
-        if (ImGui::Combo("Renderer", &current_backend, renderer_backends, IM_ARRAYSIZE(renderer_backends)))
-            renderer_.SetBackend(current_backend);
 
         if (ImGui::Button("Reset"))
             renderer_.ResetFrameIndex();
