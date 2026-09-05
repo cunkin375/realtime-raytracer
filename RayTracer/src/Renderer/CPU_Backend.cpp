@@ -3,7 +3,7 @@
 #include <ranges>
 
 #include "Math/Vector.hpp"
-#include "RayTracing/ImageColor.hpp"
+#include "ImageColor.hpp"
 #include "Util/Aliases.hpp"
 
 #include "Camera.hpp"

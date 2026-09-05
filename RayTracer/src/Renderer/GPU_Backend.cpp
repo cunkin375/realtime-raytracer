@@ -442,7 +442,7 @@ void GPU_Backend::HotReloadShader()
 {
     Log::Info("Hot-reloading shader.");
 
-    // wait fo rGPU to finish work using old pipeline before replacing
+    // wait for GPU to finish work using old pipeline before replacing
     ::vkDeviceWaitIdle(device_);
 
     VkShaderModule old_module   = compute_shader_module_;

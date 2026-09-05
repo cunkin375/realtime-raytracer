@@ -2,8 +2,8 @@
 
 #include <memory>
 
-#include "Renderer/CPU_Backend.hpp"
-#include "Renderer/GPU_Backend.hpp"
+#include "CPU_Backend.hpp"
+#include "GPU_Backend.hpp"
 
 #include "Walnut/Image.h"
 
@@ -11,7 +11,7 @@
 #include "Scene.hpp"
 
 #include "Math/Vector.hpp"
-#include "RayTracing/Ray.hpp"
+#include "Ray.hpp"
 #include "Util/Aliases.hpp"
 
 class Renderer

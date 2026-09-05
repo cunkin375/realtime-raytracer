@@ -5,8 +5,8 @@
 #include <glm/geometric.hpp>
 
 #include "Math/Vector.hpp"
-#include "RayTracing/ImageColor.hpp"
-#include "RayTracing/Ray.hpp"
+#include "ImageColor.hpp"
+#include "Ray.hpp"
 #include "Scene.hpp"
 #include "Util/Aliases.hpp"
 #include "Util/Log.hpp"

@@ -9,7 +9,7 @@
 #include "Camera.hpp"
 #include "Scene.hpp"
 
-#include "RayTracing/Ray.hpp"
+#include "Ray.hpp"
 #include "Util/Aliases.hpp"
 #include "Util/DirectoryWatcher.hpp"
 

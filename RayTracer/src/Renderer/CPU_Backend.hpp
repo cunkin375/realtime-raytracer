@@ -6,7 +6,7 @@
 #include "Scene.hpp"
 
 #include "Math/Vector.hpp"
-#include "RayTracing/Ray.hpp"
+#include "Ray.hpp"
 #include "Util/Aliases.hpp"
 
 class CPU_Backend
