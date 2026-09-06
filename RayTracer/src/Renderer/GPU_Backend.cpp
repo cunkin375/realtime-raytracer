@@ -97,6 +97,8 @@ void Check(HRESULT result, std::source_location location = std::source_location:
 using Begin = bool;
 
 constexpr std::string_view g_shader = "RayTracer/assets/shaders/raytracer.hlsl";
+constexpr const wchar_t   *g_include =
+    L"RayTracer/assets/shaders/include/"; // wstring_view does not work when using DXC API
 
 } // namespace
 
@@ -110,29 +112,29 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
     auto layout = std::array{
         // Camera Settings UBO
         VkDescriptorSetLayoutBinding{ .binding         = 0,
-                                        .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                                        .descriptorCount = 1,
-                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
+                                      .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+                                      .descriptorCount = 1,
+                                      .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
         // Spheres SSBO
         VkDescriptorSetLayoutBinding{ .binding         = 1,
-                                        .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                        .descriptorCount = 1,
-                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
+                                      .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                      .descriptorCount = 1,
+                                      .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
         // Materials SSBO
         VkDescriptorSetLayoutBinding{ .binding         = 2,
-                                        .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                        .descriptorCount = 1,
-                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
+                                      .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                      .descriptorCount = 1,
+                                      .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
         // Accumulation SSBO
         VkDescriptorSetLayoutBinding{ .binding         = 3,
-                                        .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                                        .descriptorCount = 1,
-                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
+                                      .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+                                      .descriptorCount = 1,
+                                      .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
         // Output Image Buffer
         VkDescriptorSetLayoutBinding{ .binding         = 4,
-                                        .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                                        .descriptorCount = 1,
-                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
+                                      .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+                                      .descriptorCount = 1,
+                                      .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
     };
 
     auto layout_info =
@@ -422,14 +424,18 @@ bool GPU_Backend::CompileShader(std::filesystem::path shader_path)
     };
 
     std::vector<LPCWSTR> arguments = {
-        L"-spirv", L"-T", L"cs_6_5", L"-E", L"main", L"-fspv-target-env=vulkan1.3",
+        L"-spirv", L"-T", L"cs_6_5", L"-E", L"main", L"-fspv-target-env=vulkan1.3", L"-I", g_include,
         /* debug flags */
         // L"-fspv-debug=vulkan-with-source",
         // L"-Zi",
     };
 
+    // NOTE: this is optional, it can be nullptr
+    IDxcIncludeHandler *include_handler;
+    Check(utils->CreateDefaultIncludeHandler(&include_handler));
+
     ComPtr<IDxcResult> result;
-    compiler->Compile(&source_buffer, arguments.data(), static_cast<u32>(arguments.size()), nullptr,
+    compiler->Compile(&source_buffer, arguments.data(), static_cast<u32>(arguments.size()), include_handler,
                       IID_PPV_ARGS(&result));
 
     ComPtr<IDxcBlobUtf8> errors;
