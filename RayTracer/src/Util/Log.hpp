@@ -17,13 +17,13 @@ enum class Level
     Fatal
 };
 
-constexpr const char *GetLevel(Level level)
+constexpr const char *GetLevelString(Level level)
 {
     switch (level)
     {
         case Level::Debug: return "DEBUG";
-        case Level::Info: return "INFO";
-        case Level::Warn: return "WARN";
+        case Level::Info:  return "INFO";
+        case Level::Warn:  return "WARN";
         case Level::Error: return "ERROR";
         case Level::Fatal: return "FATAL";
         default: return "UNKNOWN";
@@ -34,19 +34,15 @@ inline void PrintImpl(Level Lvl, std::source_location location, std::string form
 {
     FILE *destination;
     switch (Lvl)
-    { // clang-format off
+    {
         case Level::Debug:
-        case Level::Info: 
-            destination = stdout; 
-            break;
+        case Level::Info: destination = stdout; break;
         case Level::Warn:
         case Level::Error:
-        case Level::Fatal: 
-            destination = stderr; 
-            break;
+        case Level::Fatal: destination = stderr; break;
         default: destination = stdout;
-    } // clang-format off
-    std::println(destination, "[{}] {}:{} {}", GetLevel(Lvl),
+    }
+    std::println(destination, "[{}] {}:{} {}", GetLevelString(Lvl),
                  std::filesystem::path{ location.file_name() }.filename().string(), location.line(),
                  formatted);
 }
@@ -57,7 +53,7 @@ template <Level Lvl, typename... Args>
 struct Print
 {
     Print(std::format_string<Args...> message, Args &&...args,
-          std::source_location location = std::source_location::current())
+          std::source_location        location = std::source_location::current())
     {
         PrintImpl(Lvl, location, std::format(message, std::forward<Args>(args)...));
     }

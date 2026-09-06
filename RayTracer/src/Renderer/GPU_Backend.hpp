@@ -69,7 +69,7 @@ private:
     // ShowSize<sizeof(fVector3)> vec3_size;
 
 private:
-    bool CompileShaders(std::string_view shader_path);
+    bool CompileShader(std::filesystem::path shader_path);
 
     void HotReloadShader();
 

@@ -94,17 +94,9 @@ void Check(HRESULT result, std::source_location location = std::source_location:
                                    static_cast<i32>(result));
 }
 
-enum class Binding : u32
-{
-    CameraSettingsUBO = 0,
-    SpheresSSBO,
-    MaterialsSSBO,
-    AccumulationDataSSBO,
-    OutputImageBuffer
-};
-constexpr auto operator*(Binding b) noexcept { return std::to_underlying(b); }
-
 using Begin = bool;
+
+constexpr std::string_view g_shader = "RayTracer/assets/shaders/raytracer.hlsl";
 
 } // namespace
 
@@ -115,43 +107,38 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
     device_ = Walnut::Application::GetDevice();
 
     /* Create descriptor set layout */
-    auto layout = std::array<::VkDescriptorSetLayoutBinding, 5>{};
-
-    layout[*Binding::CameraSettingsUBO] =
-        ::VkDescriptorSetLayoutBinding{ .binding         = 0,
+    auto layout = std::array{
+        // Camera Settings UBO
+        VkDescriptorSetLayoutBinding{ .binding         = 0,
                                         .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
                                         .descriptorCount = 1,
-                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT };
-
-    layout[*Binding::SpheresSSBO] =
-        ::VkDescriptorSetLayoutBinding{ .binding         = 1,
+                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
+        // Spheres SSBO
+        VkDescriptorSetLayoutBinding{ .binding         = 1,
                                         .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                         .descriptorCount = 1,
-                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT };
-
-    layout[*Binding::MaterialsSSBO] =
-        ::VkDescriptorSetLayoutBinding{ .binding         = 2,
+                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
+        // Materials SSBO
+        VkDescriptorSetLayoutBinding{ .binding         = 2,
                                         .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                         .descriptorCount = 1,
-                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT };
-
-    layout[*Binding::AccumulationDataSSBO] =
-        ::VkDescriptorSetLayoutBinding{ .binding         = 3,
+                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
+        // Accumulation SSBO
+        VkDescriptorSetLayoutBinding{ .binding         = 3,
                                         .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
                                         .descriptorCount = 1,
-                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT };
-
-    layout[*Binding::OutputImageBuffer] =
-        ::VkDescriptorSetLayoutBinding{ .binding         = 4,
+                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
+        // Output Image Buffer
+        VkDescriptorSetLayoutBinding{ .binding         = 4,
                                         .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
                                         .descriptorCount = 1,
-                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT };
+                                        .stageFlags      = VK_SHADER_STAGE_COMPUTE_BIT },
+    };
 
     auto layout_info =
         ::VkDescriptorSetLayoutCreateInfo{ .sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
                                            .bindingCount = static_cast<u32>(layout.size()),
                                            .pBindings    = layout.data() };
-
     Check(::vkCreateDescriptorSetLayout(device_, &layout_info, nullptr, &descriptor_set_layout_));
 
     // Create pipeline layout
@@ -162,25 +149,24 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
         .pushConstantRangeCount = 0,
         .pPushConstantRanges    = nullptr,
     };
-
     Check(::vkCreatePipelineLayout(device_, &pipeline_layout_info, nullptr, &pipeline_layout_));
 
     /* Compile Shaders */
-    if (false == CompileShaders("RayTracer/assets/shaders/raytracer.hlsl"))
+    if (false == CompileShader(g_shader))
     {
         Log::Error("Shaders failed to compile.");
         return;
     }
 
     /* Create Compute Pipeline */
-    auto shader_stage_info = ::VkPipelineShaderStageCreateInfo{
+    auto shader_stage_info = VkPipelineShaderStageCreateInfo{
         .sType  = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO,
         .stage  = VK_SHADER_STAGE_COMPUTE_BIT,
         .module = compute_shader_module_,
         .pName  = "main" // must match '-E main' in DXC
     };
 
-    auto pipeline_info = ::VkComputePipelineCreateInfo{
+    auto pipeline_info = VkComputePipelineCreateInfo{
         .sType  = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO,
         .stage  = shader_stage_info,
         .layout = pipeline_layout_,
@@ -195,7 +181,7 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
         ::VkDescriptorPoolSize{ VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 1 },
     };
 
-    auto pool_info = ::VkDescriptorPoolCreateInfo{
+    auto pool_info = VkDescriptorPoolCreateInfo{
         .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
         .maxSets       = 1,
         .poolSizeCount = static_cast<u32>(pool_sizes.size()),
@@ -203,7 +189,7 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
     };
     Check(::vkCreateDescriptorPool(device_, &pool_info, nullptr, &descriptor_pool_));
 
-    auto allocation_info = ::VkDescriptorSetAllocateInfo{
+    auto allocation_info = VkDescriptorSetAllocateInfo{
         .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
         .descriptorPool     = descriptor_pool_,
         .descriptorSetCount = 1,
@@ -215,6 +201,7 @@ GPU_Backend::GPU_Backend() : valid_state_{ false }
     shader_watcher_ = std::make_unique<DirectoryWatcher>(
         Util::ResolvePath("RayTracer/assets/shaders/"),
         [this](const DirectoryWatcher::FileEvent &event) -> void { pending_reload_ = true; });
+
     if (shader_watcher_ != nullptr)
     {
         valid_state_ = true;
@@ -265,9 +252,10 @@ void GPU_Backend::SetImageParameters(u32 width, u32 height, u32 frame_index)
 
 void GPU_Backend::Render(const Camera &camera, const Scene &scene)
 {
-    PollShaderChanges();
     if (!valid_state_)
         return;
+
+    PollShaderChanges();
     ResizeImageBuffersIfNeeded(config_.image_width, config_.image_height);
     ResizeObjectBuffersIfNeeded(scene);
 
@@ -384,16 +372,17 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene)
     ::vkCmdDispatch(command, thread_groups_x, thread_groups_y, 1);
 
     // The image has been written to, transition shared image for ImGui read
-    auto post_barrier =
-        ::VkImageMemoryBarrier2{ .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
-                                 .srcStageMask     = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
-                                 .srcAccessMask    = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
-                                 .dstStageMask     = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
-                                 .dstAccessMask    = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
-                                 .oldLayout        = VK_IMAGE_LAYOUT_GENERAL,
-                                 .newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-                                 .image            = shared_image_,
-                                 .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 } };
+    auto post_barrier = ::VkImageMemoryBarrier2{
+        .sType            = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER_2,
+        .srcStageMask     = VK_PIPELINE_STAGE_2_COMPUTE_SHADER_BIT,
+        .srcAccessMask    = VK_ACCESS_2_SHADER_STORAGE_WRITE_BIT,
+        .dstStageMask     = VK_PIPELINE_STAGE_2_FRAGMENT_SHADER_BIT,
+        .dstAccessMask    = VK_ACCESS_2_SHADER_SAMPLED_READ_BIT,
+        .oldLayout        = VK_IMAGE_LAYOUT_GENERAL,
+        .newLayout        = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+        .image            = shared_image_,
+        .subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 },
+    };
 
     auto post_dependency = ::VkDependencyInfo{
         .sType                   = VK_STRUCTURE_TYPE_DEPENDENCY_INFO,
@@ -408,7 +397,7 @@ void GPU_Backend::Render(const Camera &camera, const Scene &scene)
 
 // --- Private Methods --------------------------------------------------------------------------------------
 
-bool GPU_Backend::CompileShaders(std::string_view shader_path)
+bool GPU_Backend::CompileShader(std::filesystem::path shader_path)
 {
     ComPtr<IDxcUtils> utils;
     Check(::DxcCreateInstance(CLSID_DxcUtils, IID_PPV_ARGS(&utils)));
@@ -416,7 +405,7 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
     ComPtr<IDxcCompiler3> compiler;
     Check(::DxcCreateInstance(CLSID_DxcCompiler, IID_PPV_ARGS(&compiler)));
 
-    auto file_data = Util::LoadAsBinary(shader_path);
+    auto file_data = Util::LoadAsBinary(shader_path.string());
     if (file_data.empty())
         return false;
 
@@ -447,7 +436,7 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
     result->GetOutput(DXC_OUT_ERRORS, IID_PPV_ARGS(&errors), nullptr);
     if (errors != nullptr && errors->GetStringLength() != 0zu)
     {
-        Log::Error("Compilation error in: {}", shader_path);
+        Log::Error("Compilation error in: {}", shader_path.string());
         std::cerr << errors->GetStringPointer() << "\n";
         return false;
     }
@@ -455,13 +444,13 @@ bool GPU_Backend::CompileShaders(std::string_view shader_path)
     ComPtr<IDxcBlob> spriv_blob;
     result->GetOutput(DXC_OUT_OBJECT, IID_PPV_ARGS(&spriv_blob), nullptr);
 
-    // NOTE: this might change as the GPU pipeline is optimized
-    auto create_info =
-        ::VkShaderModuleCreateInfo{ .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-                                    .codeSize = spriv_blob->GetBufferSize(),
-                                    .pCode = reinterpret_cast<const u32 *>(spriv_blob->GetBufferPointer()) };
-
+    auto create_info = ::VkShaderModuleCreateInfo{
+        .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
+        .codeSize = spriv_blob->GetBufferSize(),
+        .pCode    = reinterpret_cast<const u32 *>(spriv_blob->GetBufferPointer()),
+    };
     Check(::vkCreateShaderModule(device_, &create_info, nullptr, &compute_shader_module_));
+
     return true;
 }
 
@@ -477,7 +466,7 @@ void GPU_Backend::HotReloadShader()
 
     compute_shader_module_ = VK_NULL_HANDLE;
 
-    if (false == CompileShaders("RayTracer/assets/shaders/raytracer.hlsl"))
+    if (false == CompileShader(g_shader))
     {
         Log::Error("Shader hot-reload failed, reverting to old pipeline.");
         compute_shader_module_ = old_module;
@@ -678,13 +667,17 @@ void GPU_Backend::ResizeImageBuffersIfNeeded(u32 width, u32 height)
 
     // rebind new VkBuffers
     // WriteDescriptorSet();
-    auto accumulation_info = VkDescriptorBufferInfo{ .buffer = ssbo_accumulation_.handle,
-                                                     .offset = 0,
-                                                     .range  = ssbo_accumulation_.size };
-    auto output_image_info = VkDescriptorImageInfo{ .sampler     = VK_NULL_HANDLE,
-                                                    .imageView   = shared_image_view_,
-                                                    .imageLayout = VK_IMAGE_LAYOUT_GENERAL };
-    auto writes            = std::array{
+    auto accumulation_info = VkDescriptorBufferInfo{
+        .buffer = ssbo_accumulation_.handle,
+        .offset = 0,
+        .range  = ssbo_accumulation_.size,
+    };
+    auto output_image_info = VkDescriptorImageInfo{
+        .sampler     = VK_NULL_HANDLE,
+        .imageView   = shared_image_view_,
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
+    auto writes = std::array{
         VkWriteDescriptorSet{ .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                               .dstSet          = descriptor_set_,
                               .dstBinding      = 3,
@@ -728,14 +721,22 @@ void GPU_Backend::ResizeObjectBuffersIfNeeded(const Scene &scene)
                                      VK_BUFFER_USAGE_STORAGE_BUFFER_BIT, HOST_VISIBLE);
 
     // write new descriptor sets
-    auto ubo_info =
-        VkDescriptorBufferInfo{ .buffer = ubo_meta_.handle, .offset = 0, .range = ubo_meta_.size };
-    auto spheres_info =
-        VkDescriptorBufferInfo{ .buffer = ssbo_spheres_.handle, .offset = 0, .range = ssbo_spheres_.size };
-    auto materials_info = VkDescriptorBufferInfo{ .buffer = ssbo_materials_.handle,
-                                                  .offset = 0,
-                                                  .range  = ssbo_materials_.size };
-    auto writes         = std::array{
+    auto ubo_info = VkDescriptorBufferInfo{
+        .buffer = ubo_meta_.handle,
+        .offset = 0,
+        .range  = ubo_meta_.size,
+    };
+    auto spheres_info = VkDescriptorBufferInfo{
+        .buffer = ssbo_spheres_.handle,
+        .offset = 0,
+        .range  = ssbo_spheres_.size,
+    };
+    auto materials_info = VkDescriptorBufferInfo{
+        .buffer = ssbo_materials_.handle,
+        .offset = 0,
+        .range  = ssbo_materials_.size,
+    };
+    auto writes = std::array{
         VkWriteDescriptorSet{ .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
                               .dstSet          = descriptor_set_,
                               .dstBinding      = 0,
@@ -762,16 +763,32 @@ void GPU_Backend::ResizeObjectBuffersIfNeeded(const Scene &scene)
 // If this runs while ANY buffers are null, it will cause validation errors
 void GPU_Backend::WriteDescriptorSet()
 {
-    // clang-format off
-    auto ubo_info          = VkDescriptorBufferInfo{ .buffer = ubo_meta_.handle         , .offset = 0, .range = ubo_meta_.size };
-    auto spheres_info      = VkDescriptorBufferInfo{ .buffer = ssbo_spheres_.handle     , .offset = 0, .range = ssbo_spheres_.size };
-    auto materials_info    = VkDescriptorBufferInfo{ .buffer = ssbo_materials_.handle   , .offset = 0, .range = ssbo_materials_.size };
-    auto accumulation_info = VkDescriptorBufferInfo{ .buffer = ssbo_accumulation_.handle, .offset = 0, .range = ssbo_accumulation_.size };
-    // clang-format on
+    auto ubo_info = VkDescriptorBufferInfo{
+        .buffer = ubo_meta_.handle,
+        .offset = 0,
+        .range  = ubo_meta_.size,
+    };
+    auto spheres_info = VkDescriptorBufferInfo{
+        .buffer = ssbo_spheres_.handle,
+        .offset = 0,
+        .range  = ssbo_spheres_.size,
+    };
+    auto materials_info = VkDescriptorBufferInfo{
+        .buffer = ssbo_materials_.handle,
+        .offset = 0,
+        .range  = ssbo_materials_.size,
+    };
+    auto accumulation_info = VkDescriptorBufferInfo{
+        .buffer = ssbo_accumulation_.handle,
+        .offset = 0,
+        .range  = ssbo_accumulation_.size,
+    };
 
-    auto output_image_info = VkDescriptorImageInfo{ .sampler     = VK_NULL_HANDLE,
-                                                    .imageView   = shared_image_view_,
-                                                    .imageLayout = VK_IMAGE_LAYOUT_GENERAL };
+    auto output_image_info = VkDescriptorImageInfo{
+        .sampler     = VK_NULL_HANDLE,
+        .imageView   = shared_image_view_,
+        .imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+    };
 
     auto writes = std::array{
         VkWriteDescriptorSet{ .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
